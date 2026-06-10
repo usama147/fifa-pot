@@ -222,11 +222,13 @@ body {
   position: relative; /* for sliding indicator */
 }
 
-/* Sliding indicator bar — positioned by GSAP */
+/* Sliding indicator bar — positioned by GSAP via translateX from left:0 */
 #tab-indicator {
   position: absolute;
   bottom: -1px;
+  left: 0;           /* anchor point for GSAP translateX */
   height: 2px;
+  width: 0;
   background: linear-gradient(90deg, #F7C520, #E89626);
   border-radius: 2px 2px 0 0;
   pointer-events: none;
