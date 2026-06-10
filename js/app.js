@@ -91,6 +91,17 @@ onAuthChange((user) => {
     authScreen.style.display = "";
     appEl.style.display      = "none";
     showAuthForm("login");
+    tabsInitialised = false;
+    // Clear all form inputs (privacy)
+    ["login-email","login-password","signup-name","signup-email","signup-password","forgot-email"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+    // Clear messages
+    ["login-error","signup-error","forgot-error","forgot-success"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = "";
+    });
     // Reset submit buttons
     loginForm.querySelector("button[type=submit]").disabled = false;
     signupForm.querySelector("button[type=submit]").disabled = false;
