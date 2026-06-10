@@ -88,16 +88,23 @@ function renderParticipantManager(container, participants, poolData) {
     }
     parts.forEach(p => {
       const row = el("div", "participant-row");
-      row.innerHTML = `<span>${p.name}</span>`;
+      const nameSpan = el("span");
+      nameSpan.textContent = p.name;
+      row.appendChild(nameSpan);
       const delBtn = el("button", "btn-danger btn-sm");
       delBtn.textContent = "Remove";
       delBtn.addEventListener("click", async () => {
         if (!confirm(`Remove ${p.name}?`)) return;
-        await deleteDoc(doc(db, "pool", "main", "participants", p.id));
-        const idx = parts.findIndex(x => x.id === p.id);
-        parts.splice(idx, 1);
-        section.querySelector("h3").textContent = `Participants (${parts.length}/16)`;
-        refreshList(parts);
+        try {
+          await deleteDoc(doc(db, "pool", "main", "participants", p.id));
+          const idx = parts.findIndex(x => x.id === p.id);
+          parts.splice(idx, 1);
+          section.querySelector("h3").textContent = `Participants (${parts.length}/16)`;
+          refreshList(parts);
+        } catch (err) {
+          console.error(err);
+          alert("Failed to remove participant. Please try again.");
+        }
       });
       row.appendChild(delBtn);
       listEl.appendChild(row);
@@ -129,17 +136,23 @@ function renderParticipantManager(container, participants, poolData) {
       return;
     }
     addBtn.disabled = true;
-    const newDoc = await addDoc(PARTS_REF(), {
-      name,
-      addedAt: serverTimestamp(),
-      drawOrder: participants.length + 1,
-      teams: {}
-    });
-    participants.push({ id: newDoc.id, name, teams: {} });
-    section.querySelector("h3").textContent = `Participants (${participants.length}/16)`;
-    nameInput.value = "";
-    refreshList(participants);
-    addBtn.disabled = false;
+    try {
+      const newDoc = await addDoc(PARTS_REF(), {
+        name,
+        addedAt: serverTimestamp(),
+        drawOrder: participants.length + 1,
+        teams: {}
+      });
+      participants.push({ id: newDoc.id, name, teams: {} });
+      section.querySelector("h3").textContent = `Participants (${participants.length}/16)`;
+      nameInput.value = "";
+      refreshList(participants);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add participant. Please try again.");
+    } finally {
+      addBtn.disabled = false;
+    }
   });
 
   nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addBtn.click(); });
@@ -168,9 +181,15 @@ function renderTierEditor(container, poolData) {
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
     saveBtn.textContent = "Saving...";
-    await setDoc(POOL_REF(), { tiers }, { merge: true });
-    saveBtn.textContent = "Saved ✓";
-    setTimeout(() => { saveBtn.textContent = "Save Tiers"; saveBtn.disabled = false; }, 2000);
+    try {
+      await setDoc(POOL_REF(), { tiers }, { merge: true });
+      saveBtn.textContent = "Saved ✓";
+      setTimeout(() => { saveBtn.textContent = "Save Tiers"; saveBtn.disabled = false; }, 2000);
+    } catch (err) {
+      console.error(err);
+      saveBtn.textContent = "Error saving — retry";
+      saveBtn.disabled = false;
+    }
   });
 
   function renderTiers() {
@@ -256,7 +275,8 @@ function renderDrawButton(container, participants, poolData) {
     drawBtn.disabled = true;
     drawBtn.textContent = "Drawing...";
     try {
-      await runDraw(participants, poolData.tiers);
+      const freshPool = await loadPool();
+      await runDraw(participants, freshPool.tiers);
       drawBtn.textContent = "Draw complete!";
       // Reload admin panel to show locked state
       const { renderAdmin } = await import("./admin.js");
