@@ -2,26 +2,41 @@
 import { login, signup, logout, sendReset, onAuthChange } from "./auth.js";
 import { ADMIN_EMAIL } from "./config.js";
 
-// ── Auth screen form switching ──────────────────────────────────────────────
-const authScreen   = document.getElementById("auth-screen");
-const appEl        = document.getElementById("app");
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const authScreen = document.getElementById("auth-screen");
+const appEl      = document.getElementById("app");
+const loginForm  = document.getElementById("login-form");
+const signupForm = document.getElementById("signup-form");
+const forgotForm = document.getElementById("forgot-form");
 
-const loginForm    = document.getElementById("login-form");
-const signupForm   = document.getElementById("signup-form");
-const forgotForm   = document.getElementById("forgot-form");
-
-document.getElementById("show-signup").addEventListener("click",    () => showAuthForm("signup"));
-document.getElementById("show-forgot").addEventListener("click",    () => showAuthForm("forgot"));
-document.getElementById("show-login").addEventListener("click",     () => showAuthForm("login"));
-document.getElementById("show-login-2").addEventListener("click",   () => showAuthForm("login"));
-
+// ── Auth form switching (animated) ───────────────────────────────────────────
 function showAuthForm(name) {
-  loginForm.style.display  = name === "login"  ? "" : "none";
-  signupForm.style.display = name === "signup" ? "" : "none";
-  forgotForm.style.display = name === "forgot" ? "" : "none";
+  const target  = { login: loginForm, signup: signupForm, forgot: forgotForm }[name];
+  const current = [loginForm, signupForm, forgotForm].find(f => f.style.display !== "none");
+
+  if (current && current !== target) {
+    gsap.to(current, {
+      duration: 0.18, opacity: 0, y: -8,
+      onComplete: () => {
+        current.style.display = "none";
+        gsap.set(current, { clearProps: "opacity,y" });
+        target.style.display = "";
+        gsap.from(target, { duration: 0.28, opacity: 0, y: 10, ease: "power2.out" });
+      }
+    });
+  } else {
+    loginForm.style.display  = name === "login"  ? "" : "none";
+    signupForm.style.display = name === "signup" ? "" : "none";
+    forgotForm.style.display = name === "forgot" ? "" : "none";
+  }
 }
 
-// ── Login ───────────────────────────────────────────────────────────────────
+document.getElementById("show-signup").addEventListener("click",  () => showAuthForm("signup"));
+document.getElementById("show-forgot").addEventListener("click",  () => showAuthForm("forgot"));
+document.getElementById("show-login").addEventListener("click",   () => showAuthForm("login"));
+document.getElementById("show-login-2").addEventListener("click", () => showAuthForm("login"));
+
+// ── Login ─────────────────────────────────────────────────────────────────────
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const email    = document.getElementById("login-email").value.trim();
@@ -38,7 +53,7 @@ loginForm.addEventListener("submit", async (e) => {
   }
 });
 
-// ── Signup ──────────────────────────────────────────────────────────────────
+// ── Signup ────────────────────────────────────────────────────────────────────
 signupForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const name     = document.getElementById("signup-name").value.trim();
@@ -57,12 +72,12 @@ signupForm.addEventListener("submit", async (e) => {
   }
 });
 
-// ── Forgot password ─────────────────────────────────────────────────────────
+// ── Forgot password ───────────────────────────────────────────────────────────
 forgotForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email   = document.getElementById("forgot-email").value.trim();
-  const errEl   = document.getElementById("forgot-error");
-  const succEl  = document.getElementById("forgot-success");
+  const email  = document.getElementById("forgot-email").value.trim();
+  const errEl  = document.getElementById("forgot-error");
+  const succEl = document.getElementById("forgot-success");
   errEl.textContent = ""; succEl.textContent = "";
   try {
     await sendReset(email);
@@ -72,45 +87,78 @@ forgotForm.addEventListener("submit", async (e) => {
   }
 });
 
-// ── Logout ───────────────────────────────────────────────────────────────────
+// ── Logout ────────────────────────────────────────────────────────────────────
 document.getElementById("logout-btn").addEventListener("click", () => logout());
 
-// ── Auth state listener ──────────────────────────────────────────────────────
+// ── Auth state listener ───────────────────────────────────────────────────────
+let tabsInitialised = false;
+let appHasBeenShown = false;
+
 onAuthChange((user) => {
   if (user) {
-    authScreen.style.display = "none";
-    appEl.style.display      = "";
+    const isAdmin  = user.email === ADMIN_EMAIL;
+    const adminBtn = document.getElementById("admin-tab-btn");
     document.getElementById("user-email-display").textContent = user.email;
+    adminBtn.style.display = isAdmin ? "" : "none";
 
-    const isAdmin = user.email === ADMIN_EMAIL;
-    const adminTabBtn = document.getElementById("admin-tab-btn");
-    adminTabBtn.style.display = isAdmin ? "" : "none";
+    // auth → app transition
+    gsap.to(authScreen, {
+      duration: 0.22, opacity: 0,
+      onComplete: () => {
+        authScreen.style.display = "none";
+        gsap.set(authScreen, { clearProps: "opacity" });
+        appEl.style.display = "";
+        appHasBeenShown = true;
 
-    initTabs(isAdmin);
+        gsap.from(appEl,         { duration: 0.4, opacity: 0, ease: "power2.out" });
+        gsap.from("#app-header", { duration: 0.4, y: -20, opacity: 0, ease: "power2.out", delay: 0.04 });
+        gsap.from("#tab-nav",    { duration: 0.4, y: -10, opacity: 0, ease: "power2.out", delay: 0.09 });
+        gsap.from("main",        { duration: 0.4, opacity: 0, y: 14, ease: "power2.out", delay: 0.14 });
+
+        initTabs(isAdmin);
+      }
+    });
+
   } else {
-    authScreen.style.display = "";
-    appEl.style.display      = "none";
-    showAuthForm("login");
-    tabsInitialised = false;
-    // Clear all form inputs (privacy)
-    ["login-email","login-password","signup-name","signup-email","signup-password","forgot-email"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
-    // Clear messages
-    ["login-error","signup-error","forgot-error","forgot-success"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = "";
-    });
-    // Reset submit buttons
-    loginForm.querySelector("button[type=submit]").disabled = false;
-    signupForm.querySelector("button[type=submit]").disabled = false;
+    if (appHasBeenShown) {
+      // app → auth (logout)
+      gsap.to(appEl, {
+        duration: 0.22, opacity: 0,
+        onComplete: () => {
+          appEl.style.display = "none";
+          gsap.set(appEl, { clearProps: "opacity" });
+          tabsInitialised = false;
+          clearAuthForms();
+          authScreen.style.display = "";
+          authScreen.style.opacity = "";
+          gsap.from(".auth-card", { duration: 0.55, y: 32, opacity: 0, ease: "power3.out" });
+          showAuthForm("login");
+        }
+      });
+    } else {
+      // initial page load, no user
+      clearAuthForms();
+      authScreen.style.opacity = "";
+      gsap.set(".auth-card", { opacity: 0, y: 40 });
+      gsap.to(".auth-card", { duration: 0.7, opacity: 1, y: 0, ease: "power3.out", delay: 0.1 });
+    }
   }
 });
 
-// ── Tab navigation ───────────────────────────────────────────────────────────
-let tabsInitialised = false;
+function clearAuthForms() {
+  ["login-email","login-password","signup-name","signup-email","signup-password","forgot-email"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  ["login-error","signup-error","forgot-error","forgot-success"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "";
+  });
+  loginForm.querySelector("button[type=submit]").disabled = false;
+  signupForm.querySelector("button[type=submit]").disabled = false;
+}
 
+// ── Tab navigation ─────────────────────────────────────────────────────────────
 function initTabs(isAdmin) {
   if (tabsInitialised) return;
   tabsInitialised = true;
@@ -120,22 +168,44 @@ function initTabs(isAdmin) {
 
   tabBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      const target = btn.dataset.tab;
-      tabBtns.forEach(b  => b.classList.toggle("active", b.dataset.tab === target));
-      tabViews.forEach(v => {
-        const show = v.id === `tab-${target}`;
-        v.style.display = show ? "" : "none";
-        v.classList.toggle("active", show);
-      });
-      onTabActivated(target, isAdmin);
+      const target      = btn.dataset.tab;
+      const currentView = document.querySelector(".tab-view.active");
+      const newView     = document.getElementById(`tab-${target}`);
+
+      if (currentView === newView) return;
+
+      tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === target));
+
+      if (currentView) {
+        gsap.to(currentView, {
+          duration: 0.16, opacity: 0,
+          onComplete: () => {
+            tabViews.forEach(v => {
+              const show = v.id === `tab-${target}`;
+              v.style.display = show ? "" : "none";
+              v.classList.toggle("active", show);
+              if (show) gsap.set(v, { clearProps: "opacity" });
+            });
+            gsap.from(newView, { duration: 0.3, opacity: 0, y: 14, ease: "power2.out" });
+            onTabActivated(target, isAdmin);
+          }
+        });
+      } else {
+        newView.style.display = "";
+        newView.classList.add("active");
+        gsap.from(newView, { duration: 0.3, opacity: 0, y: 14, ease: "power2.out" });
+        onTabActivated(target, isAdmin);
+      }
     });
   });
 
-  // Load default tab
+  // Load default tab with entrance animation
+  const poolView = document.getElementById("tab-pool");
+  gsap.from(poolView, { duration: 0.35, opacity: 0, y: 16, ease: "power2.out", delay: 0.22 });
   onTabActivated("pool", isAdmin);
 }
 
-// ── Tab content loader ───────────────────────────────────────────────────────
+// ── Tab content loader ────────────────────────────────────────────────────────
 async function onTabActivated(tab, isAdmin) {
   if (tab === "pool") {
     const { renderPool } = await import("./pool.js");
@@ -152,7 +222,7 @@ async function onTabActivated(tab, isAdmin) {
   }
 }
 
-// ── Error messages ───────────────────────────────────────────────────────────
+// ── Error messages ────────────────────────────────────────────────────────────
 function friendlyAuthError(code) {
   const map = {
     "auth/invalid-email":          "Invalid email address.",

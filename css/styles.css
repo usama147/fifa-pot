@@ -1,32 +1,51 @@
+@font-face {
+  font-family: 'Questrial';
+  src: url('../Questrial-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #090B14;
-  --card: #0D1222;
-  --border: rgba(255,255,255,0.07);
-  --text: #E8EDF5;
-  --muted: rgba(255,255,255,0.35);
-  --green: #00D96C;
-  --green-dark: #00B55A;
-  --big: #F5B432;
-  --big-dim: rgba(245,180,50,0.08);
-  --big-border: rgba(245,180,50,0.25);
-  --smaller: #97A6BE;
-  --smaller-dim: rgba(151,166,190,0.08);
-  --smaller-border: rgba(151,166,190,0.25);
-  --underdog: #C1773A;
-  --underdog-dim: rgba(193,119,58,0.08);
-  --underdog-border: rgba(193,119,58,0.25);
-  --error: #F87171;
-  --warning: #FBBF24;
+  --bg:              #060B18;
+  --card:            #0B1729;
+  --border:          rgba(255,255,255,0.09);
+  --text:            #EEF2FA;
+  --muted:           rgba(255,255,255,0.38);
+  --green:           #F7C520;       /* FIFA Trophy Gold — primary accent */
+  --green-dark:      #D9A818;
+  --big:             #E89626;       /* warm amber for top-tier teams */
+  --big-dim:         rgba(232,150,38,0.10);
+  --big-border:      rgba(232,150,38,0.28);
+  --smaller:         #8FACC8;
+  --smaller-dim:     rgba(143,172,200,0.09);
+  --smaller-border:  rgba(143,172,200,0.28);
+  --underdog:        #C57A3C;
+  --underdog-dim:    rgba(197,122,60,0.09);
+  --underdog-border: rgba(197,122,60,0.28);
+  --error:           #E63329;       /* FIFA Crimson */
+  --warning:         #F5A623;
+}
+
+/* ── FIFA colour stripe at the top ─────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #E63329 0%, #F7C520 50%, #E63329 100%);
+  z-index: 9999;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Questrial', sans-serif;
   font-size: 14px;
   min-height: 100vh;
+  padding-top: 3px; /* offset for the stripe */
 }
 
 /* AUTH */
@@ -45,12 +64,16 @@ body {
   padding: 40px 32px;
   width: 100%;
   max-width: 380px;
+  box-shadow: 0 0 50px rgba(247,197,32,0.07), 0 24px 64px rgba(0,0,0,0.55);
 }
 
 .auth-title {
   font-family: 'Bebas Neue', sans-serif;
   font-size: clamp(36px, 10vw, 52px);
-  color: var(--green);
+  background: linear-gradient(135deg, #F7C520, #E89626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   letter-spacing: 3px;
   text-align: center;
 }
@@ -73,17 +96,17 @@ body {
   border-radius: 8px;
   padding: 12px 14px;
   color: var(--text);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Questrial', sans-serif;
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
 }
-.auth-card input:focus { border-color: rgba(255,255,255,0.2); }
+.auth-card input:focus { border-color: rgba(247,197,32,0.35); }
 .auth-card input::placeholder { color: var(--muted); }
 
 .btn-primary {
   background: linear-gradient(135deg, var(--green), var(--green-dark));
-  color: #000;
+  color: #060B18;
   font-family: 'Bebas Neue', sans-serif;
   font-size: 18px;
   letter-spacing: 1px;
@@ -91,10 +114,13 @@ body {
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, box-shadow 0.2s;
 }
-.btn-primary:hover { opacity: 0.9; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:hover {
+  opacity: 0.92;
+  box-shadow: 0 0 18px rgba(247,197,32,0.35);
+}
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-ghost {
   background: none;
@@ -102,7 +128,7 @@ body {
   color: var(--muted);
   border-radius: 6px;
   padding: 6px 12px;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Questrial', sans-serif;
   font-size: 13px;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
@@ -111,15 +137,16 @@ body {
 
 .btn-danger {
   background: none;
-  border: 1px solid rgba(248,113,113,0.3);
+  border: 1px solid rgba(230,51,41,0.35);
   color: var(--error);
   border-radius: 6px;
   padding: 6px 12px;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Questrial', sans-serif;
   font-size: 13px;
   cursor: pointer;
+  transition: background 0.15s;
 }
-.btn-danger:hover { background: rgba(248,113,113,0.08); }
+.btn-danger:hover { background: rgba(230,51,41,0.09); }
 
 .btn-sm {
   padding: 5px 10px;
@@ -138,7 +165,7 @@ body {
   background: none;
   border: none;
   color: var(--muted);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Questrial', sans-serif;
   font-size: 13px;
   cursor: pointer;
   text-decoration: underline;
@@ -146,9 +173,9 @@ body {
 }
 .auth-links button:hover { color: var(--text); }
 
-.form-error { color: var(--error); font-size: 13px; min-height: 18px; }
-.form-success { color: var(--green); font-size: 13px; min-height: 18px; }
-.form-hint { color: var(--muted); font-size: 13px; }
+.form-error   { color: var(--error);   font-size: 13px; min-height: 18px; }
+.form-success { color: var(--green);   font-size: 13px; min-height: 18px; }
+.form-hint    { color: var(--muted);   font-size: 13px; }
 
 /* APP SHELL */
 #app-header {
@@ -157,14 +184,18 @@ body {
   gap: 12px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border);
+  background: linear-gradient(to right, #040912, #0A1526, #040912);
 }
 
 .app-logo {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 24px;
-  color: var(--green);
   letter-spacing: 2px;
   flex: 1;
+  background: linear-gradient(135deg, #F7C520, #E89626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .user-email {
@@ -180,6 +211,7 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 0 20px;
   gap: 4px;
+  background: linear-gradient(to right, #040912, #0A1526, #040912);
 }
 
 .tab-btn {
@@ -226,8 +258,8 @@ body {
   text-transform: uppercase;
 }
 
-.tier-badge.big    { background: var(--big-dim);      border: 1px solid var(--big-border);      color: var(--big); }
-.tier-badge.smaller{ background: var(--smaller-dim);  border: 1px solid var(--smaller-border);  color: var(--smaller); }
+.tier-badge.big     { background: var(--big-dim);      border: 1px solid var(--big-border);      color: var(--big); }
+.tier-badge.smaller { background: var(--smaller-dim);  border: 1px solid var(--smaller-border);  color: var(--smaller); }
 .tier-badge.underdog{ background: var(--underdog-dim); border: 1px solid var(--underdog-border); color: var(--underdog); }
 
 /* SECTION HEADER */
@@ -269,7 +301,6 @@ body {
   border-radius: 8px;
   padding: 5px 10px;
   font-size: 13px;
-  font-weight: 500;
 }
 
 .team-chip.big     { background: var(--big-dim);      border: 1px solid var(--big-border);      color: var(--big); }
@@ -286,9 +317,9 @@ body {
   margin-bottom: 10px;
 }
 
-.match-status-live   { color: var(--green); font-weight: 600; }
-.match-status-final  { color: var(--muted); }
-.match-status-sched  { color: var(--warning); }
+.match-status-live  { color: var(--green); font-weight: 600; }
+.match-status-final { color: var(--muted); }
+.match-status-sched { color: var(--warning); }
 
 .match-teams {
   display: flex;
@@ -316,7 +347,10 @@ body {
 .pot-total {
   font-family: 'Bebas Neue', sans-serif;
   font-size: clamp(36px, 8vw, 56px);
-  color: var(--green);
+  background: linear-gradient(135deg, #F7C520, #E89626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   letter-spacing: 2px;
 }
 
@@ -401,11 +435,12 @@ body {
   border-radius: 8px;
   padding: 10px 12px;
   color: var(--text);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Questrial', sans-serif;
   font-size: 14px;
   outline: none;
+  transition: border-color 0.2s;
 }
-.add-row input:focus { border-color: rgba(255,255,255,0.2); }
+.add-row input:focus { border-color: rgba(247,197,32,0.35); }
 .add-row input::placeholder { color: var(--muted); }
 
 /* LOADING / EMPTY */
@@ -429,8 +464,9 @@ body {
 /* PULSE ANIMATION for live matches */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50%       { opacity: 0.4; }
 }
+
 .live-dot {
   display: inline-block;
   width: 8px;
@@ -443,9 +479,9 @@ body {
 
 /* RESPONSIVE */
 @media (max-width: 600px) {
-  .tab-btn { padding: 10px 10px; font-size: 10px; letter-spacing: 1px; }
-  .tab-view { padding: 14px; }
+  .tab-btn    { padding: 10px 10px; font-size: 10px; letter-spacing: 1px; }
+  .tab-view   { padding: 14px; }
   .user-email { display: none; }
   .participant-teams { gap: 6px; }
-  .team-chip { font-size: 12px; padding: 4px 8px; }
+  .team-chip  { font-size: 12px; padding: 4px 8px; }
 }
