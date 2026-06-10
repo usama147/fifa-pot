@@ -13,10 +13,10 @@ export function login(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-export function signup(email, password, displayName) {
-  return createUserWithEmailAndPassword(auth, email, password).then(cred => {
-    return updateProfile(cred.user, { displayName });
-  });
+export async function signup(email, password, displayName) {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(cred.user, { displayName });
+  return cred.user;
 }
 
 export function logout() {
