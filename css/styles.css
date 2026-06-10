@@ -356,12 +356,25 @@ body {
 .match-teams {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   font-family: 'Bebas Neue', sans-serif;
   font-size: 18px;
   letter-spacing: 1px;
   margin: 6px 0;
 }
+
+.owner-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.owner-tag.big      { color: var(--big);      background: var(--big-dim);      border: 1px solid var(--big-border); }
+.owner-tag.smaller  { color: var(--smaller);  background: var(--smaller-dim);  border: 1px solid var(--smaller-border); }
+.owner-tag.underdog { color: var(--underdog); background: var(--underdog-dim); border: 1px solid var(--underdog-border); }
 
 .match-score {
   font-family: 'IBM Plex Mono', monospace;

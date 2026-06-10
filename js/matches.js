@@ -117,9 +117,21 @@ function renderMatchCards(container, events, poolTeams) {
     const teamsRow = document.createElement("div");
     teamsRow.className = "match-teams";
 
+    // Home side
+    const homeCol = document.createElement("div");
+    homeCol.style.cssText = "display:flex;flex-direction:column;align-items:flex-start;gap:3px;";
     const homeName = document.createElement("span");
     homeName.textContent = home?.team?.displayName || "TBC";
-    teamsRow.appendChild(homeName);
+    homeCol.appendChild(homeName);
+    if (homePool.length > 0) {
+      homePool.forEach(pt => {
+        const tag = document.createElement("span");
+        tag.className = `owner-tag ${pt.tierKey}`;
+        tag.textContent = `${pt.participantName} · ${tierLabel(pt.tierKey)}`;
+        homeCol.appendChild(tag);
+      });
+    }
+    teamsRow.appendChild(homeCol);
 
     if (isFinal || isLive) {
       const scoreEl = document.createElement("span");
@@ -128,24 +140,28 @@ function renderMatchCards(container, events, poolTeams) {
       teamsRow.appendChild(scoreEl);
     } else {
       const vsEl = document.createElement("span");
-      vsEl.style.cssText = "color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px;";
+      vsEl.style.cssText = "color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px;align-self:center;";
       vsEl.textContent = "vs";
       teamsRow.appendChild(vsEl);
     }
 
+    // Away side
+    const awayCol = document.createElement("div");
+    awayCol.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:3px;";
     const awayName = document.createElement("span");
     awayName.textContent = away?.team?.displayName || "TBC";
-    teamsRow.appendChild(awayName);
+    awayCol.appendChild(awayName);
+    if (awayPool.length > 0) {
+      awayPool.forEach(pt => {
+        const tag = document.createElement("span");
+        tag.className = `owner-tag ${pt.tierKey}`;
+        tag.textContent = `${pt.participantName} · ${tierLabel(pt.tierKey)}`;
+        awayCol.appendChild(tag);
+      });
+    }
+    teamsRow.appendChild(awayCol);
 
     card.appendChild(teamsRow);
-
-    // Pool highlight line
-    if (allPool.length > 0) {
-      const highlightEl = document.createElement("div");
-      highlightEl.className = "pool-highlight";
-      highlightEl.textContent = allPool.map(pt => `${pt.participantName}'s ${tierIcon(pt.tierKey)} team`).join(" · ");
-      card.appendChild(highlightEl);
-    }
 
     container.appendChild(card);
   });
@@ -158,6 +174,10 @@ function renderMatchCards(container, events, poolTeams) {
 
 function tierIcon(key) {
   return { big: "◈", smaller: "◇", underdog: "○" }[key] || "";
+}
+
+function tierLabel(key) {
+  return { big: "Big", smaller: "Smaller", underdog: "Underdog" }[key] || key;
 }
 
 function formatKickoff(dateStr) {
