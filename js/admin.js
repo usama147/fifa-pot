@@ -2,7 +2,7 @@
 import { db, DEFAULT_TIERS } from "./config.js";
 import {
   doc, getDoc, setDoc, collection,
-  getDocs, addDoc, deleteDoc, serverTimestamp
+  getDocs, addDoc, deleteDoc, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 async function loadRegisteredUsers() {
@@ -82,6 +82,8 @@ function renderAdminUI(container, poolData, participants, registeredUsers) {
         Elimination controls are in the <strong>Pot</strong> tab.
       </p>`;
     container.appendChild(lockNotice);
+
+    renderResetPanel(container, participants);
   }
 }
 
@@ -107,15 +109,15 @@ function renderParticipantManager(container, participants, registeredUsers) {
       delBtn.textContent = "Remove";
       delBtn.addEventListener("click", async () => {
         if (!confirm(`Remove ${p.name}?`)) return;
+        delBtn.disabled = true;
         try {
           await deleteDoc(doc(db, "pool", "main", "participants", p.id));
-          const idx = parts.findIndex(x => x.id === p.id);
-          parts.splice(idx, 1);
-          section.querySelector("h3").textContent = `Participants (${parts.length}/16)`;
-          refreshList(parts);
+          const { renderAdmin } = await import("./admin.js");
+          renderAdmin(document.getElementById("tab-admin"));
         } catch (err) {
           console.error(err);
           alert("Failed to remove participant. Please try again.");
+          delBtn.disabled = false;
         }
       });
       row.appendChild(delBtn);
@@ -156,16 +158,14 @@ function renderParticipantManager(container, participants, registeredUsers) {
             if (participants.length >= 16) { alert("Maximum 16 participants reached."); return; }
             chip.disabled = true;
             try {
-              const newDoc = await addDoc(PARTS_REF(), {
+              await addDoc(PARTS_REF(), {
                 name: user.name,
                 addedAt: serverTimestamp(),
                 drawOrder: participants.length + 1,
                 teams: {}
               });
-              participants.push({ id: newDoc.id, name: user.name, teams: {} });
-              section.querySelector("h3").textContent = `Participants (${participants.length}/16)`;
-              refreshList(participants);
-              renderChips();
+              const { renderAdmin } = await import("./admin.js");
+              renderAdmin(document.getElementById("tab-admin"));
             } catch (err) {
               console.error(err);
               alert("Failed to add participant. Please try again.");
@@ -210,20 +210,17 @@ function renderParticipantManager(container, participants, registeredUsers) {
     }
     addBtn.disabled = true;
     try {
-      const newDoc = await addDoc(PARTS_REF(), {
+      await addDoc(PARTS_REF(), {
         name,
         addedAt: serverTimestamp(),
         drawOrder: participants.length + 1,
         teams: {}
       });
-      participants.push({ id: newDoc.id, name, teams: {} });
-      section.querySelector("h3").textContent = `Participants (${participants.length}/16)`;
-      nameInput.value = "";
-      refreshList(participants);
+      const { renderAdmin } = await import("./admin.js");
+      renderAdmin(document.getElementById("tab-admin"));
     } catch (err) {
       console.error(err);
       alert("Failed to add participant. Please try again.");
-    } finally {
       addBtn.disabled = false;
     }
   });
@@ -379,6 +376,67 @@ function renderDrawButton(container, participants, poolData) {
   validate();
   section.appendChild(validationEl);
   section.appendChild(drawBtn);
+  container.appendChild(section);
+}
+
+// ── Reset draw ────────────────────────────────────────────────────────────────
+function renderResetPanel(container, participants) {
+  const section = el("div", "admin-section");
+  section.style.marginTop = "16px";
+  section.innerHTML = `<h3 style="color:var(--error);">Danger Zone</h3>`;
+
+  const desc = el("p");
+  desc.style.cssText = "color:var(--muted);font-size:13px;margin-bottom:12px;";
+  desc.textContent = "Reset the draw to run it again. This clears all team assignments and elimination data, but keeps all participant accounts and the tier/team configuration.";
+  section.appendChild(desc);
+
+  const resetBtn = el("button", "btn-danger");
+  resetBtn.style.width = "100%";
+  resetBtn.textContent = "Reset Draw";
+
+  resetBtn.addEventListener("click", async () => {
+    if (!confirm("Reset the draw? This will clear all team assignments and elimination data. Participant accounts are kept. This cannot be undone.")) return;
+    resetBtn.disabled = true;
+    resetBtn.textContent = "Resetting...";
+
+    try {
+      const batch = writeBatch(db);
+
+      // Clear participant team assignments
+      participants.forEach(p => {
+        const ref = doc(db, "pool", "main", "participants", p.id);
+        batch.update(ref, { teams: {} });
+      });
+
+      // Reset pool flags
+      const poolRef = doc(db, "pool", "main");
+      batch.update(poolRef, {
+        drawCompleted: false,
+        drawDate: null,
+        eliminatedTeams: [],
+        "finalStandings.champion":   null,
+        "finalStandings.runnerUp":   null,
+        "finalStandings.thirdPlace": null,
+      });
+
+      await batch.commit();
+
+      resetBtn.textContent = "Reset complete!";
+      setTimeout(async () => {
+        const { renderAdmin } = await import("./admin.js");
+        const adminContainer = document.getElementById("tab-admin");
+        adminContainer.innerHTML = "";
+        renderAdmin(adminContainer);
+      }, 800);
+    } catch (err) {
+      console.error(err);
+      alert("Reset failed. Please try again.");
+      resetBtn.disabled = false;
+      resetBtn.textContent = "Reset Draw";
+    }
+  });
+
+  section.appendChild(resetBtn);
   container.appendChild(section);
 }
 
