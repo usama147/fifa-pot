@@ -7,10 +7,17 @@ import {
 export async function renderPool(container) {
   container.innerHTML = `<div class="loading">Loading pool...</div>`;
 
-  const [poolSnap, partsSnap] = await Promise.all([
-    getDoc(doc(db, "pool", "main")),
-    getDocs(collection(db, "pool", "main", "participants"))
-  ]);
+  let poolSnap, partsSnap;
+  try {
+    [poolSnap, partsSnap] = await Promise.all([
+      getDoc(doc(db, "pool", "main")),
+      getDocs(collection(db, "pool", "main", "participants"))
+    ]);
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = `<div class="empty-state"><p>Failed to load pool data. Please refresh.</p></div>`;
+    return;
+  }
 
   if (!poolSnap.exists()) {
     container.innerHTML = `<div class="empty-state"><p>No pool data yet. Admin needs to set up the pool.</p></div>`;

@@ -118,7 +118,7 @@ function renderMatchCards(container, events, poolTeams) {
     teamsRow.className = "match-teams";
 
     const homeName = document.createElement("span");
-    homeName.textContent = `${home?.team?.flag || ""} ${home?.team?.displayName || "TBC"}`;
+    homeName.textContent = home?.team?.displayName || "TBC";
     teamsRow.appendChild(homeName);
 
     if (isFinal || isLive) {
@@ -134,7 +134,7 @@ function renderMatchCards(container, events, poolTeams) {
     }
 
     const awayName = document.createElement("span");
-    awayName.textContent = `${away?.team?.displayName || "TBC"} ${away?.team?.flag || ""}`;
+    awayName.textContent = away?.team?.displayName || "TBC";
     teamsRow.appendChild(awayName);
 
     card.appendChild(teamsRow);

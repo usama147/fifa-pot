@@ -8,10 +8,17 @@ import {
 export async function renderPot(container, isAdmin) {
   container.innerHTML = `<div class="loading">Loading pot...</div>`;
 
-  const [poolSnap, partsSnap] = await Promise.all([
-    getDoc(doc(db, "pool", "main")),
-    getDocs(collection(db, "pool", "main", "participants"))
-  ]);
+  let poolSnap, partsSnap;
+  try {
+    [poolSnap, partsSnap] = await Promise.all([
+      getDoc(doc(db, "pool", "main")),
+      getDocs(collection(db, "pool", "main", "participants"))
+    ]);
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = `<div class="empty-state"><p>Failed to load pot data. Please refresh.</p></div>`;
+    return;
+  }
 
   if (!poolSnap.exists()) {
     container.innerHTML = `<div class="empty-state"><p>No pool data yet.</p></div>`;
@@ -147,14 +154,14 @@ export async function renderPot(container, isAdmin) {
 
   // ── Admin controls ───────────────────────────────────────────────────────────
   if (isAdmin) {
-    renderEliminationPanel(container, participants, eliminatedNames, isAdmin);
+    renderEliminationPanel(container, participants, eliminatedNames);
     if (!finalStandings.champion) {
       renderFinalStandingsPanel(container, participants, potTotal);
     }
   }
 }
 
-function renderEliminationPanel(container, participants, eliminatedNames, isAdmin) {
+function renderEliminationPanel(container, participants, eliminatedNames) {
   const panel = mkCard();
   panel.style.marginTop = "12px";
 
