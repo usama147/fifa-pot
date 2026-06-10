@@ -110,12 +110,13 @@ onAuthChange((user) => {
         appEl.style.display = "";
         appHasBeenShown = true;
 
-        gsap.from(appEl,         { duration: 0.4, opacity: 0, ease: "power2.out" });
-        gsap.from("#app-header", { duration: 0.4, y: -20, opacity: 0, ease: "power2.out", delay: 0.04 });
-        gsap.from("#tab-nav",    { duration: 0.4, y: -10, opacity: 0, ease: "power2.out", delay: 0.09 });
-        gsap.from("main",        { duration: 0.4, opacity: 0, y: 14, ease: "power2.out", delay: 0.14 });
-
-        initTabs(isAdmin);
+        // Cascade entrance
+        const tl = gsap.timeline();
+        tl.from(appEl,         { duration: 0.35, opacity: 0, ease: "power2.out" })
+          .from("#app-header", { duration: 0.35, y: -20, opacity: 0, ease: "power3.out" }, "<0.04")
+          .from("#tab-nav",    { duration: 0.35, y: -12, opacity: 0, ease: "power3.out" }, "<0.06")
+          .from("main",        { duration: 0.4,  opacity: 0, y: 16,  ease: "power2.out" }, "<0.08")
+          .call(() => initTabs(isAdmin));
       }
     });
 
@@ -140,7 +141,7 @@ onAuthChange((user) => {
       clearAuthForms();
       authScreen.style.opacity = "";
       gsap.set(".auth-card", { opacity: 0, y: 40 });
-      gsap.to(".auth-card", { duration: 0.7, opacity: 1, y: 0, ease: "power3.out", delay: 0.1 });
+      gsap.to(".auth-card",  { duration: 0.7, opacity: 1, y: 0, ease: "power3.out", delay: 0.1 });
     }
   }
 });
@@ -165,7 +166,60 @@ function initTabs(isAdmin) {
 
   const tabBtns  = document.querySelectorAll(".tab-btn");
   const tabViews = document.querySelectorAll(".tab-view");
+  const tabNav   = document.getElementById("tab-nav");
 
+  // ── Sliding indicator bar ───────────────────────────────────────────────────
+  const indicator = document.createElement("div");
+  indicator.id = "tab-indicator";
+  tabNav.appendChild(indicator);
+
+  let indicatorReady = false;
+
+  function positionIndicator(btn, animate) {
+    const navRect = tabNav.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    if (btnRect.width === 0) return; // not laid out yet
+    gsap.to(indicator, {
+      duration: animate ? 0.32 : 0,
+      x: btnRect.left - navRect.left,
+      width: btnRect.width,
+      ease: "power3.out"
+    });
+    indicatorReady = true;
+  }
+
+  // Position indicator after entrance animation settles
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const activeBtn = tabNav.querySelector(".tab-btn.active");
+    if (activeBtn) positionIndicator(activeBtn, false);
+  }));
+
+  // ── Card stagger via MutationObserver ───────────────────────────────────────
+  tabViews.forEach(view => {
+    let debounce = null;
+    new MutationObserver(() => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        const cards = [...view.querySelectorAll(
+          ".card, .participant-card, .match-card"
+        )].filter(c => !c.dataset.ga);
+
+        if (cards.length === 0) return;
+        cards.forEach(c => (c.dataset.ga = "1"));
+
+        gsap.from(cards, {
+          duration: 0.35,
+          opacity: 0,
+          y: 12,
+          stagger: { amount: Math.min(0.25, cards.length * 0.045), from: "start" },
+          ease: "power2.out",
+          clearProps: "opacity,y"
+        });
+      }, 70);
+    }).observe(view, { childList: true, subtree: true });
+  });
+
+  // ── Tab click handler ───────────────────────────────────────────────────────
   tabBtns.forEach(btn => {
     btn.addEventListener("click", () => {
       const target      = btn.dataset.tab;
@@ -175,6 +229,7 @@ function initTabs(isAdmin) {
       if (currentView === newView) return;
 
       tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === target));
+      positionIndicator(btn, true);
 
       if (currentView) {
         gsap.to(currentView, {
@@ -199,7 +254,7 @@ function initTabs(isAdmin) {
     });
   });
 
-  // Load default tab with entrance animation
+  // Load default tab
   const poolView = document.getElementById("tab-pool");
   gsap.from(poolView, { duration: 0.35, opacity: 0, y: 16, ease: "power2.out", delay: 0.22 });
   onTabActivated("pool", isAdmin);

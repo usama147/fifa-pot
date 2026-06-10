@@ -51,8 +51,16 @@ export async function renderPot(container, isAdmin) {
 
   const potTotalEl = document.createElement("div");
   potTotalEl.className = "pot-total";
-  potTotalEl.textContent = `R${potTotal}`;
+  potTotalEl.textContent = "R0";
   potCard.appendChild(potTotalEl);
+  // Count-up animation
+  gsap.to({ val: 0 }, {
+    val: potTotal,
+    duration: 1.4,
+    ease: "power2.out",
+    delay: 0.3,
+    onUpdate() { potTotalEl.textContent = `R${Math.round(this.targets()[0].val)}`; }
+  });
 
   const potSubEl = document.createElement("div");
   potSubEl.style.cssText = "color:var(--muted);font-size:13px;margin-top:4px;";
@@ -74,7 +82,7 @@ export async function renderPot(container, isAdmin) {
     { label: "🥉 Third Place", key: "thirdPlace", pct: 0.15 },
   ];
 
-  places.forEach(({ label, key, pct }) => {
+  places.forEach(({ label, key, pct }, pi) => {
     const standing = finalStandings[key];
     const row = document.createElement("div");
     row.className = "payout-row";
@@ -92,7 +100,15 @@ export async function renderPot(container, isAdmin) {
 
     const amtNum = document.createElement("strong");
     amtNum.style.color = "var(--green)";
-    amtNum.textContent = `R${Math.round(potTotal * pct)}`;
+    const amtFinal = Math.round(potTotal * pct);
+    amtNum.textContent = "R0";
+    gsap.to({ val: 0 }, {
+      val: amtFinal,
+      duration: 1.2,
+      ease: "power2.out",
+      delay: 0.45 + pi * 0.12,
+      onUpdate() { amtNum.textContent = `R${Math.round(this.targets()[0].val)}`; }
+    });
     amtEl.appendChild(amtNum);
 
     if (standing) {

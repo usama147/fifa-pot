@@ -279,21 +279,34 @@ function renderTierEditor(container, poolData) {
       const teamList = el("div", "team-list");
       tier.teams.forEach((team, idx) => {
         const pill = el("div", `team-pill ${tier.key}`);
-        pill.innerHTML = `<span>${team.flag} ${team.name}</span>`;
+        pill.style.cursor = "default";
 
-        // Move to other tiers
+        const nameSpan = el("span");
+        nameSpan.textContent = `${team.flag} ${team.name}`;
+        pill.appendChild(nameSpan);
+
+        // Labeled move buttons, revealed on hover (always visible on touch)
+        const actions = el("div", "tier-actions");
         tiers.forEach((otherTier, oti) => {
           if (oti === ti) return;
-          const moveBtn = el("button", "move-btn");
-          moveBtn.textContent = `→${otherTier.icon}`;
+          const moveBtn = el("button", `tier-action-btn ${otherTier.key}`);
+          moveBtn.textContent = `→ ${otherTier.label}`;
           moveBtn.title = `Move to ${otherTier.label}`;
-          moveBtn.addEventListener("click", () => {
-            tiers[ti].teams.splice(idx, 1);
-            tiers[oti].teams.push(team);
-            renderTiers();
+          moveBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Animate pill out before removing
+            gsap.to(pill, {
+              duration: 0.18, opacity: 0, x: -8,
+              onComplete: () => {
+                tiers[ti].teams.splice(idx, 1);
+                tiers[oti].teams.push(team);
+                renderTiers();
+              }
+            });
           });
-          pill.appendChild(moveBtn);
+          actions.appendChild(moveBtn);
         });
+        pill.appendChild(actions);
 
         teamList.appendChild(pill);
       });
