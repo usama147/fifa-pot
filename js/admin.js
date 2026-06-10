@@ -5,6 +5,15 @@ import {
   getDocs, addDoc, deleteDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
+async function loadRegisteredUsers() {
+  try {
+    const snap = await getDocs(collection(db, "users"));
+    return snap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
 const POOL_REF = () => doc(db, "pool", "main");
 const PARTS_REF = () => collection(db, "pool", "main", "participants");
 
@@ -13,10 +22,13 @@ export async function renderAdmin(container) {
   container.innerHTML = `<div class="loading">Loading admin panel...</div>`;
 
   let poolData = await loadPool();
-  const participants = await loadParticipants();
+  const [participants, registeredUsers] = await Promise.all([
+    loadParticipants(),
+    loadRegisteredUsers()
+  ]);
 
   container.innerHTML = "";
-  renderAdminUI(container, poolData, participants);
+  renderAdminUI(container, poolData, participants, registeredUsers);
 }
 
 async function loadPool() {
@@ -42,7 +54,7 @@ async function loadParticipants() {
 }
 
 // ── Main admin UI ────────────────────────────────────────────────────────────
-function renderAdminUI(container, poolData, participants) {
+function renderAdminUI(container, poolData, participants, registeredUsers) {
   const drawDone = poolData.drawCompleted;
 
   // Page header
@@ -59,7 +71,7 @@ function renderAdminUI(container, poolData, participants) {
   container.appendChild(header);
 
   if (!drawDone) {
-    renderParticipantManager(container, participants, poolData);
+    renderParticipantManager(container, participants, registeredUsers);
     renderTierEditor(container, poolData);
     renderDrawButton(container, participants, poolData);
   } else {
@@ -74,7 +86,7 @@ function renderAdminUI(container, poolData, participants) {
 }
 
 // ── Participant manager ──────────────────────────────────────────────────────
-function renderParticipantManager(container, participants, poolData) {
+function renderParticipantManager(container, participants, registeredUsers) {
   const section = el("div", "admin-section");
   section.innerHTML = `<h3>Participants (${participants.length}/16)</h3>`;
 
@@ -112,6 +124,67 @@ function renderParticipantManager(container, participants, poolData) {
   }
 
   refreshList(participants);
+
+  // Registered users chips
+  if (registeredUsers.length > 0) {
+    const regHeader = el("p");
+    regHeader.style.cssText = "color:var(--muted);font-size:12px;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;margin:14px 0 8px;";
+    regHeader.textContent = "SIGNED-UP USERS — click to add";
+    section.appendChild(regHeader);
+
+    const chipsEl = el("div");
+    chipsEl.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;";
+
+    function renderChips() {
+      chipsEl.innerHTML = "";
+      const addedNames = new Set(participants.map(p => p.name.toLowerCase()));
+      registeredUsers.forEach(user => {
+        const chip = el("button");
+        const alreadyAdded = addedNames.has(user.name.toLowerCase());
+        chip.style.cssText = `
+          background:${alreadyAdded ? "rgba(0,217,108,0.1)" : "rgba(255,255,255,0.06)"};
+          border:1px solid ${alreadyAdded ? "var(--green)" : "var(--border)"};
+          border-radius:20px;padding:6px 14px;color:${alreadyAdded ? "var(--green)" : "var(--text)"};
+          font-family:Outfit,sans-serif;font-size:13px;cursor:${alreadyAdded ? "default" : "pointer"};
+          transition:background 0.15s;
+        `;
+        chip.textContent = alreadyAdded ? `✓ ${user.name}` : `+ ${user.name}`;
+        chip.disabled = alreadyAdded;
+
+        if (!alreadyAdded) {
+          chip.addEventListener("click", async () => {
+            if (participants.length >= 16) { alert("Maximum 16 participants reached."); return; }
+            chip.disabled = true;
+            try {
+              const newDoc = await addDoc(PARTS_REF(), {
+                name: user.name,
+                addedAt: serverTimestamp(),
+                drawOrder: participants.length + 1,
+                teams: {}
+              });
+              participants.push({ id: newDoc.id, name: user.name, teams: {} });
+              section.querySelector("h3").textContent = `Participants (${participants.length}/16)`;
+              refreshList(participants);
+              renderChips();
+            } catch (err) {
+              console.error(err);
+              alert("Failed to add participant. Please try again.");
+              chip.disabled = false;
+            }
+          });
+        }
+        chipsEl.appendChild(chip);
+      });
+    }
+
+    renderChips();
+    section.appendChild(chipsEl);
+
+    const divider = el("p");
+    divider.style.cssText = "color:var(--muted);font-size:12px;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;margin:0 0 8px;";
+    divider.textContent = "OR ADD MANUALLY";
+    section.appendChild(divider);
+  }
 
   // Add participant row
   const addRow = el("div", "add-row");
