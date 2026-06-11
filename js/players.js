@@ -4,6 +4,72 @@ import {
   doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
+// ── Particle cleanup registry ─────────────────────────────────────────────────
+let particleCleanups = [];
+
+function cleanupParticles() {
+  particleCleanups.forEach(fn => fn());
+  particleCleanups = [];
+}
+
+function addPaidParticles(card) {
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;";
+  card.insertBefore(canvas, card.firstChild);
+
+  const COUNT = 14;
+  let particles = null;
+  let raf;
+
+  function spawn(w, h, y) {
+    return {
+      x:         Math.random() * w,
+      y:         y !== undefined ? y : Math.random() * h,
+      r:         0.7 + Math.random() * 1.3,
+      vx:        (Math.random() - 0.5) * 0.3,
+      vy:        -(0.2 + Math.random() * 0.35),
+      life:      Math.random(),
+      lifeSpeed: 0.004 + Math.random() * 0.005,
+    };
+  }
+
+  function draw() {
+    const w = card.offsetWidth;
+    const h = card.offsetHeight;
+
+    if (!particles) {
+      canvas.width  = w;
+      canvas.height = h;
+      particles = Array.from({ length: COUNT }, () => spawn(w, h));
+    }
+
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+
+    particles.forEach((p, i) => {
+      p.life += p.lifeSpeed;
+      p.x    += p.vx;
+      p.y    += p.vy;
+
+      if (p.life >= 1) {
+        particles[i] = spawn(w, h, h + 4);
+        return;
+      }
+
+      const alpha = Math.sin(p.life * Math.PI) * 0.45;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(247,197,32,${alpha.toFixed(3)})`;
+      ctx.fill();
+    });
+
+    raf = requestAnimationFrame(draw);
+  }
+
+  draw();
+  particleCleanups.push(() => cancelAnimationFrame(raf));
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 export async function renderPlayers(container) {
   container.innerHTML = `<div class="loading">Loading players...</div>`;
@@ -41,6 +107,7 @@ export async function renderPlayers(container) {
 
 // ── Participant list ──────────────────────────────────────────────────────────
 function showList(container, participants, pool, eliminatedNames, eliminatedMap) {
+  cleanupParticles();
   container.innerHTML = "";
 
   // Header
@@ -69,6 +136,10 @@ function showList(container, participants, pool, eliminatedNames, eliminatedMap)
     const isOut      = teams.length > 0 && aliveTeams.length === 0;
 
     const card = mk("div", "participant-card");
+    if (p.paid) {
+      card.classList.add("paid-border");
+      addPaidParticles(card);
+    }
     if (pool.drawCompleted) card.style.cursor = "pointer";
 
     // Name + status row

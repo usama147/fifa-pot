@@ -827,3 +827,21 @@ body {
 
 .elim-confirm-btns .btn-ghost  { flex: 1; padding: 10px; font-size: 13px; }
 .elim-confirm-btns .btn-danger { flex: 1; padding: 10px; font-size: 13px; }
+
+/* ── Paid participant gold border + particle canvas ──────────────────────── */
+.participant-card.paid-border {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px rgba(247,197,32,0.12), inset 0 0 24px rgba(247,197,32,0.04);
+}
+.participant-card.paid-border:hover {
+  border-color: var(--green);
+  box-shadow: 0 6px 24px rgba(247,197,32,0.22), 0 0 0 1px rgba(247,197,32,0.2);
+}
+/* Lift all direct children above the particle canvas */
+.participant-card.paid-border > *:not(canvas) {
+  position: relative;
+  z-index: 1;
+}

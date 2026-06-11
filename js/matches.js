@@ -163,6 +163,34 @@ function renderMatchCards(container, events, poolTeams) {
 
     card.appendChild(teamsRow);
 
+    // Venue + round footer
+    const venueName  = comp?.venue?.fullName || "";
+    const venueCity  = comp?.venue?.address?.city || "";
+    const venueStr   = [venueName, venueCity].filter(Boolean).join(" · ");
+    const groupNote  = (comp?.notes || []).find(n => /group/i.test(n.type?.text || "") || /group/i.test(n.headline || ""));
+    const seasonSlug = event.season?.slug || "";
+    const roundStr   = groupNote?.headline
+      || (seasonSlug ? seasonSlug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "");
+
+    if (venueStr || roundStr) {
+      const footer = document.createElement("div");
+      footer.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);gap:8px;";
+
+      const venueEl = document.createElement("span");
+      venueEl.style.cssText = "font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+      venueEl.textContent = venueStr;
+      footer.appendChild(venueEl);
+
+      if (roundStr) {
+        const roundEl = document.createElement("span");
+        roundEl.style.cssText = "font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;white-space:nowrap;flex-shrink:0;";
+        roundEl.textContent = roundStr.toUpperCase();
+        footer.appendChild(roundEl);
+      }
+
+      card.appendChild(footer);
+    }
+
     container.appendChild(card);
   });
 
