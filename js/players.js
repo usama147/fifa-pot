@@ -82,6 +82,12 @@ function showList(container, participants, pool, eliminatedNames, eliminatedMap)
     nameEl.textContent = p.name;
     nameRow.appendChild(nameEl);
 
+    if (p.paid) {
+      const paidBadge = mk("span", "paid-badge");
+      paidBadge.textContent = "PAID";
+      nameRow.appendChild(paidBadge);
+    }
+
     if (pool.drawCompleted && teams.length > 0) {
       const badge = mk("span");
       badge.style.cssText = `
@@ -162,6 +168,13 @@ function showDetail(container, p, participants, pool, eliminatedNames, eliminate
     ${isOut ? "opacity:0.4;text-decoration:line-through;" : ""}`;
   bigName.textContent = p.name;
   profileCard.appendChild(bigName);
+
+  if (p.paid) {
+    const paidBadge = mk("span", "paid-badge");
+    paidBadge.textContent = "PAID";
+    paidBadge.style.cssText = "margin-top:8px;display:inline-block;";
+    profileCard.appendChild(paidBadge);
+  }
 
   const statusLine = mk("div");
   statusLine.style.cssText = `

@@ -556,3 +556,274 @@ body {
   .participant-teams { gap: 6px; }
   .team-chip  { font-size: 12px; padding: 4px 8px; }
 }
+
+/* PAID BADGE */
+.paid-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--green);
+  background: rgba(247,197,32,0.10);
+  border: 1px solid rgba(247,197,32,0.25);
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+/* GROUP STANDINGS */
+.standings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.standings-row:last-child { border-bottom: none; }
+.standings-row.standings-pool {
+  background: rgba(247,197,32,0.04);
+  border-radius: 6px;
+  padding: 9px 8px;
+  margin: 2px -8px;
+}
+
+.standings-pos {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.standings-pos.pos-1, .standings-pos.pos-2 { color: var(--green); }
+.standings-pos.pos-3 { color: var(--warning); }
+.standings-pos.pos-4 { color: var(--error); }
+
+.standings-team {
+  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.standings-team.is-pool-team { color: var(--green); font-weight: 600; }
+
+.standings-stats {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.standings-status {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.group-header {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.pool-owner-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.pool-owner-tag.big      { color: var(--big);      background: var(--big-dim);      border: 1px solid var(--big-border); }
+.pool-owner-tag.smaller  { color: var(--smaller);  background: var(--smaller-dim);  border: 1px solid var(--smaller-border); }
+.pool-owner-tag.underdog { color: var(--underdog); background: var(--underdog-dim); border: 1px solid var(--underdog-border); }
+
+/* GROUP TABLE — FIFA-style standings */
+.group-table {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.group-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.025);
+}
+
+.group-table-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.group-col-labels {
+  display: flex;
+}
+
+.group-col-labels span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  width: 28px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.group-col-labels .col-pts { color: var(--text); font-weight: 600; }
+
+.group-table-row {
+  display: flex;
+  align-items: center;
+  padding: 9px 16px 9px 10px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.group-table-row:last-child { border-bottom: none; }
+.group-table-row.is-pool    { background: rgba(247,197,32,0.03); }
+
+.group-pos-bar {
+  width: 3px;
+  height: 26px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.group-pos-bar.pos-1, .group-pos-bar.pos-2 { background: var(--green); }
+.group-pos-bar.pos-3 { background: var(--warning); }
+.group-pos-bar.pos-4 { background: var(--error); }
+
+.group-rank {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.group-team-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.group-team-name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-team-name.is-pool { color: var(--green); font-weight: 600; }
+.group-team-name.is-elim { opacity: 0.35; text-decoration: line-through; }
+
+.group-stats {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.group-stat {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  width: 28px;
+  text-align: center;
+}
+.group-stat.col-pts { color: var(--text); font-weight: 600; }
+
+@media (max-width: 480px) {
+  .col-hide-sm { display: none !important; }
+}
+
+/* Admin row — subtle right-click hint on hover */
+.admin-row { cursor: context-menu; }
+.admin-row:hover { background: rgba(255,255,255,0.035) !important; }
+
+/* CONTEXT MENU */
+.ctx-menu {
+  position: fixed;
+  z-index: 9000;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.65), 0 2px 8px rgba(0,0,0,0.3);
+  min-width: 190px;
+}
+
+.ctx-menu-item {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: 'Questrial', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s;
+  user-select: none;
+}
+.ctx-menu-item:hover         { background: rgba(255,255,255,0.06); }
+.ctx-menu-item.danger        { color: var(--error); }
+.ctx-menu-item.danger:hover  { background: rgba(230,51,41,0.10); }
+
+/* ELIMINATE CONFIRM MODAL */
+.elim-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.elim-confirm-modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 28px 24px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.75);
+  text-align: center;
+}
+
+.elim-confirm-msg {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  color: var(--text);
+}
+
+.elim-confirm-msg strong {
+  display: block;
+  margin-top: 6px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: var(--error);
+}
+
+.elim-confirm-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.elim-confirm-btns .btn-ghost  { flex: 1; padding: 10px; font-size: 13px; }
+.elim-confirm-btns .btn-danger { flex: 1; padding: 10px; font-size: 13px; }

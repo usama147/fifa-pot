@@ -93,3 +93,7 @@ export function teamMatches(espnName, poolName) {
   const b = normalizeTeamName(poolName);
   return a === b || a.includes(b) || b.includes(a);
 }
+
+// ── API-Football (api-sports.io) ─────────────────────────────────────────────
+export const API_FOOTBALL_KEY = "69018ddd7e785e47912bdd4cda1c45af";
+export const STANDINGS_URL    = "https://v3.football.api-sports.io/standings?league=1&season=2026";

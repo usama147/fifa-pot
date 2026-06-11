@@ -2,7 +2,7 @@
 import { db, DEFAULT_TIERS } from "./config.js";
 import {
   doc, getDoc, setDoc, collection,
-  getDocs, addDoc, deleteDoc, serverTimestamp, writeBatch
+  getDocs, addDoc, deleteDoc, serverTimestamp, writeBatch, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 async function loadRegisteredUsers() {
@@ -83,6 +83,7 @@ function renderAdminUI(container, poolData, participants, registeredUsers) {
       </p>`;
     container.appendChild(lockNotice);
 
+    renderPaidManager(container, participants);
     renderResetPanel(container, participants);
   }
 }
@@ -376,6 +377,54 @@ function renderDrawButton(container, participants, poolData) {
   validate();
   section.appendChild(validationEl);
   section.appendChild(drawBtn);
+  container.appendChild(section);
+}
+
+// ── Paid manager ─────────────────────────────────────────────────────────────
+function renderPaidManager(container, participants) {
+  const section = el("div", "admin-section");
+  section.innerHTML = `<h3>Payment Tracker</h3>`;
+
+  const listEl = el("div");
+  listEl.style.cssText = "display:flex;flex-direction:column;gap:8px;";
+
+  participants.forEach(p => {
+    const row = el("div");
+    row.style.cssText = "display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:10px 14px;";
+
+    const nameEl = el("span");
+    nameEl.style.flex = "1";
+    nameEl.textContent = p.name;
+    row.appendChild(nameEl);
+
+    if (p.paid) {
+      const badge = el("span", "paid-badge");
+      badge.textContent = "PAID";
+      row.appendChild(badge);
+    }
+
+    const btn = el("button", `${p.paid ? "btn-ghost" : "btn-primary"} btn-sm`);
+    btn.style.whiteSpace = "nowrap";
+    btn.textContent = p.paid ? "Unmark" : "Mark Paid";
+
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await updateDoc(doc(db, "pool", "main", "participants", p.id), { paid: !p.paid });
+        const { renderAdmin } = await import("./admin.js");
+        renderAdmin(document.getElementById("tab-admin"));
+      } catch (err) {
+        console.error(err);
+        alert("Failed to update payment status. Please try again.");
+        btn.disabled = false;
+      }
+    });
+
+    row.appendChild(btn);
+    listEl.appendChild(row);
+  });
+
+  section.appendChild(listEl);
   container.appendChild(section);
 }
 

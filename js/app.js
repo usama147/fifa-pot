@@ -273,6 +273,9 @@ async function onTabActivated(tab, isAdmin) {
   } else if (tab === "pot") {
     const { renderPot } = await import("./pot.js");
     renderPot(document.getElementById("tab-pot"), isAdmin);
+  } else if (tab === "standings") {
+    const { renderStandings } = await import("./standings.js");
+    renderStandings(document.getElementById("tab-standings"), isAdmin);
   } else if (tab === "players" && isAdmin) {
     const { renderPlayers } = await import("./players.js");
     renderPlayers(document.getElementById("tab-players"));
