@@ -101,7 +101,7 @@ onAuthChange((user) => {
     const playersBtn = document.getElementById("players-tab-btn");
     document.getElementById("user-email-display").textContent = user.email;
     adminBtn.style.display   = isAdmin ? "" : "none";
-    playersBtn.style.display = isAdmin ? "" : "none";
+    playersBtn.style.display = "";
 
     // auth → app transition
     gsap.to(authScreen, {
@@ -276,7 +276,7 @@ async function onTabActivated(tab, isAdmin) {
   } else if (tab === "standings") {
     const { renderStandings } = await import("./standings.js");
     renderStandings(document.getElementById("tab-standings"), isAdmin);
-  } else if (tab === "players" && isAdmin) {
+  } else if (tab === "players") {
     const { renderPlayers } = await import("./players.js");
     renderPlayers(document.getElementById("tab-players"));
   } else if (tab === "admin" && isAdmin) {
