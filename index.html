@@ -61,6 +61,13 @@
     <header id="app-header">
       <span class="app-logo">FIFAPOT</span>
       <span id="user-email-display" class="user-email"></span>
+      <div id="online-pill" style="opacity:0">
+        <svg viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M10 1C5.5 1 1.7 4 1 7c.7 3 4.5 6 9 6s8.3-3 9-6c-.7-3-4.5-6-9-6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="10" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <span id="online-count">0</span>
+      </div>
       <button id="logout-btn" class="btn-ghost">Sign out</button>
     </header>
 
@@ -70,6 +77,7 @@
       <button class="tab-btn" data-tab="matches">Matches</button>
       <button class="tab-btn" data-tab="pot">Pot</button>
       <button class="tab-btn" data-tab="standings">Groups</button>
+      <button class="tab-btn" data-tab="leaderboard">Leaders</button>
       <button class="tab-btn" data-tab="players" id="players-tab-btn" style="display:none">Players</button>
       <button class="tab-btn" data-tab="admin" id="admin-tab-btn" style="display:none">Admin</button>
     </nav>
@@ -80,6 +88,7 @@
       <div id="tab-matches" class="tab-view" style="display:none"></div>
       <div id="tab-pot" class="tab-view" style="display:none"></div>
       <div id="tab-standings" class="tab-view" style="display:none"></div>
+      <div id="tab-leaderboard" class="tab-view" style="display:none"></div>
       <div id="tab-players" class="tab-view" style="display:none"></div>
       <div id="tab-admin" class="tab-view" style="display:none"></div>
     </main>

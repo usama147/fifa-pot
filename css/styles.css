@@ -212,6 +212,29 @@ body {
   letter-spacing: 1px;
 }
 
+#online-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(247,197,32,0.07);
+  border: 1px solid rgba(247,197,32,0.18);
+  border-radius: 20px;
+  padding: 3px 9px 3px 7px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--green);
+  letter-spacing: 1px;
+  transition: opacity 0.4s ease;
+  cursor: default;
+  user-select: none;
+}
+#online-pill svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
 /* TAB NAV */
 #tab-nav {
   display: flex;

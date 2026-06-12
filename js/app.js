@@ -1,6 +1,7 @@
 // js/app.js
 import { login, signup, logout, sendReset, onAuthChange } from "./auth.js";
 import { ADMIN_EMAIL } from "./config.js";
+import { initPresence, cleanupPresence } from "./presence.js";
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 const authScreen = document.getElementById("auth-screen");
@@ -102,6 +103,7 @@ onAuthChange((user) => {
     document.getElementById("user-email-display").textContent = user.email;
     adminBtn.style.display   = isAdmin ? "" : "none";
     playersBtn.style.display = "";
+    initPresence(user);
 
     // auth → app transition
     gsap.to(authScreen, {
@@ -123,6 +125,7 @@ onAuthChange((user) => {
     });
 
   } else {
+    cleanupPresence();
     if (appHasBeenShown) {
       // app → auth (logout)
       gsap.to(appEl, {
@@ -276,6 +279,9 @@ async function onTabActivated(tab, isAdmin) {
   } else if (tab === "standings") {
     const { renderStandings } = await import("./standings.js");
     renderStandings(document.getElementById("tab-standings"), isAdmin);
+  } else if (tab === "leaderboard") {
+    const { renderLeaderboard } = await import("./leaderboard.js");
+    renderLeaderboard(document.getElementById("tab-leaderboard"));
   } else if (tab === "players") {
     const { renderPlayers } = await import("./players.js");
     renderPlayers(document.getElementById("tab-players"));
