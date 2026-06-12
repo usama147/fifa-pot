@@ -1,8 +1,9 @@
 // js/players.js
-import { db } from "./config.js";
+import { db, teamMatches } from "./config.js";
 import {
   doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { buildCard, ESPN_BASE, FINAL_STATES } from "./matches.js";
 
 // ── Particle cleanup registry ─────────────────────────────────────────────────
 let particleCleanups = [];
@@ -206,7 +207,6 @@ function showList(container, participants, pool, eliminatedNames, eliminatedMap)
 function showDetail(container, p, participants, pool, eliminatedNames, eliminatedMap) {
   container.innerHTML = "";
 
-  const potTotal   = pool.buyIn * participants.length;
   const teams      = Object.entries(p.teams || {}).map(([key, t]) => ({ key, ...t }));
   const aliveTeams = teams.filter(t => !eliminatedNames.has(t.name.toLowerCase()));
   const isOut      = teams.length > 0 && aliveTeams.length === 0;
@@ -323,48 +323,25 @@ function showDetail(container, p, participants, pool, eliminatedNames, eliminate
     container.appendChild(teamsCard);
   }
 
-  // ── Payout potential card (only if still in the running)
-  if (!isOut && teams.length > 0) {
-    const payCard = mk("div", "card");
-    payCard.style.marginBottom = "12px";
-    payCard.dataset.ga = "1";
+  // ── Match History card
+  if (teams.length > 0) {
+    const histCard = mk("div", "card");
+    histCard.style.marginBottom = "12px";
+    histCard.dataset.ga = "1";
 
-    const payHdr = mk("div", "section-header");
-    payHdr.textContent = "Payout Potential";
-    payCard.appendChild(payHdr);
+    const histHdr = mk("div", "section-header");
+    histHdr.textContent = "Match History";
+    histCard.appendChild(histHdr);
 
-    [
-      { label: "🥇 If Champion",   pct: 0.60 },
-      { label: "🥈 If Runner-Up",  pct: 0.25 },
-      { label: "🥉 If 3rd Place",  pct: 0.15 },
-    ].forEach(({ label, pct }, i) => {
-      const finalAmt = Math.round(potTotal * pct);
-      const row = mk("div");
-      row.style.cssText = `
-        display:flex;justify-content:space-between;align-items:center;
-        padding:10px 0;
-        border-bottom:${i < 2 ? "1px solid var(--border)" : "none"};`;
+    const histBody = mk("div");
+    histBody.style.marginTop = "8px";
+    histCard.appendChild(histBody);
 
-      const lbl = mk("span");
-      lbl.style.fontSize = "14px";
-      lbl.textContent = label;
-      row.appendChild(lbl);
-
-      const amt = mk("strong");
-      amt.style.color = "var(--green)";
-      amt.textContent = "R0";
-      gsap.to({ val: 0 }, {
-        val: finalAmt,
-        duration: 1.0,
-        ease: "power2.out",
-        delay: 0.4 + i * 0.12,
-        onUpdate() { amt.textContent = `R${Math.round(this.targets()[0].val)}`; }
-      });
-      row.appendChild(amt);
-      payCard.appendChild(row);
+    container.appendChild(histCard);
+    // Load async after render
+    renderMatchHistory(histBody, teams).catch(() => {
+      histBody.innerHTML = `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding:6px 0;">Could not load match history.</div>`;
     });
-
-    container.appendChild(payCard);
   }
 
   // ── Entrance animation (manual stagger; cards marked data-ga skip MutationObserver)
@@ -375,6 +352,64 @@ function showDetail(container, p, participants, pool, eliminatedNames, eliminate
     y: 14,
     stagger: 0.07,
     ease: "power2.out"
+  });
+}
+
+// ── Match History ─────────────────────────────────────────────────────────────
+async function renderMatchHistory(container, playerTeams) {
+  container.innerHTML = `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding:6px 0;">Loading match history…</div>`;
+
+  const teamNames = playerTeams.map(t => t.name);
+
+  const now   = new Date();
+  const start = new Date("2026-06-11");
+  const fmt   = d => d.toISOString().slice(0, 10).replace(/-/g, "");
+  const res   = await fetch(`${ESPN_BASE}?dates=${fmt(start)}-${fmt(now)}`);
+  const data  = await res.json();
+  const events = data.events || [];
+
+  // Keep only completed matches involving at least one of this player's teams
+  const played = events.filter(ev => {
+    if (!FINAL_STATES.has(ev.status?.type?.name || "")) return false;
+    const comps = ev.competitions?.[0]?.competitors || [];
+    return comps.some(c => teamNames.some(name => teamMatches(c.team?.displayName || "", name)));
+  });
+
+  played.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  container.innerHTML = "";
+
+  if (!played.length) {
+    container.innerHTML = `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding:6px 0;">No matches played yet.</div>`;
+    return;
+  }
+
+  // Format player's teams as poolTeams entries (empty participantName = show tier badge only)
+  const playerPoolTeams = playerTeams.map(t => ({
+    participantName: "",
+    tierKey: t.key,
+    team: t
+  }));
+
+  played.forEach(ev => {
+    const comps = ev.competitions?.[0]?.competitors || [];
+    // Find the competitor that matches one of the player's teams
+    const playerComp = comps.find(c =>
+      teamNames.some(name => teamMatches(c.team?.displayName || "", name))
+    );
+
+    let resultClass = "";
+    if (playerComp) {
+      const myScore  = parseInt(playerComp.score ?? 0, 10);
+      const oppScore = parseInt(comps.find(c => c !== playerComp)?.score ?? 0, 10);
+      if (myScore > oppScore)      resultClass = "result-win";
+      else if (myScore < oppScore) resultClass = "result-loss";
+      else                         resultClass = "result-draw";
+    }
+
+    const card = buildCard(ev, playerPoolTeams, false, true);
+    if (resultClass) card.classList.add(resultClass);
+    container.appendChild(card);
   });
 }
 
