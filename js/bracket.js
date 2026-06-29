@@ -16,21 +16,54 @@ const ROUND_LABELS = {
 };
 
 // ── Round detection ────────────────────────────────────────────────────────────
+// ESPN returns knockout matches with empty notes[], so we detect round by:
+//   1. Event name patterns (TBD matches like "Round of 32 3 Winner at Canada"
+//      are actually Round of 16 slots — the name tells us the feeder round)
+//   2. Match date against FIFA 2026 published schedule
+//
+// FIFA World Cup 2026 knockout schedule:
+//   Round of 32 : Jun 28 – Jul  5
+//   Round of 16 : Jul  7 – Jul 10
+//   Quarter-finals: Jul 12 – Jul 13
+//   Semi-finals   : Jul 15 – Jul 16
+//   Third place   : Jul 19
+//   Final         : Jul 20
 function detectRound(event) {
+  // 1. Check notes first (future-proofs if ESPN ever adds them)
   const notes = event.competitions?.[0]?.notes || [];
   for (const note of notes) {
-    const text = (note.headline || note.type?.text || "").toLowerCase().trim();
-    if (!text) continue;
-    if (/group/i.test(text))                           return null;
-    if (/round of 32|round of thirty.?two/i.test(text)) return "r32";
-    if (/round of 16|round of sixteen/i.test(text))    return "r16";
-    if (/quarter.?final/i.test(text))                  return "qf";
-    if (/semi.?final/i.test(text))                     return "sf";
-    if (/third.?place/i.test(text))                    return "third";
-    if (/\bfinal\b/i.test(text))                       return "final";
-    return "other";
+    const t = (note.headline || note.type?.text || "").toLowerCase().trim();
+    if (!t) continue;
+    if (/group/i.test(t))            return null;
+    if (/round of 32/i.test(t))      return "r32";
+    if (/round of 16/i.test(t))      return "r16";
+    if (/quarter.?final/i.test(t))   return "qf";
+    if (/semi.?final/i.test(t))      return "sf";
+    if (/third.?place/i.test(t))     return "third";
+    if (/\bfinal\b/i.test(t))        return "final";
   }
-  return null; // no notes → group stage or unknown, skip
+
+  const d    = new Date(event.date || "");
+  const name = event.name || "";
+
+  // Before knockout stage → group stage, skip
+  if (d < new Date("2026-06-28T00:00:00Z")) return null;
+
+  // 2. TBD match names reveal the feeder round, not the current round.
+  //    "Round of 32 X Winner at Team" → this is a Round of 16 slot
+  //    "Round of 16 X Winner at Team" → this is a Quarter-final slot
+  if (/round of 32.+winner|winner.+round of 32/i.test(name)) return "r16";
+  if (/round of 16.+winner|winner.+round of 16/i.test(name)) return "qf";
+  if (/quarter.?final.+winner|winner.+quarter.?final/i.test(name)) return "sf";
+  if (/semi.?final.+winner|winner.+semi.?final/i.test(name)) return "final";
+
+  // 3. Date-range fallback for confirmed matches (actual team names)
+  if (d <= new Date("2026-07-05T23:59:59Z")) return "r32";
+  if (d <= new Date("2026-07-10T23:59:59Z")) return "r16";
+  if (d <= new Date("2026-07-13T23:59:59Z")) return "qf";
+  if (d <= new Date("2026-07-16T23:59:59Z")) return "sf";
+  if (d <= new Date("2026-07-19T23:59:59Z")) return "third";
+  return "final";
 }
 
 // ── Pool teams ─────────────────────────────────────────────────────────────────
@@ -50,13 +83,13 @@ async function loadPoolTeams() {
 }
 
 // ── Fetch + bucket by round ────────────────────────────────────────────────────
+// ESPN caps results on broad queries — the full group stage (72 matches) fills
+// the limit, leaving no room for knockout matches. We query the knockout window
+// directly: Jun 28 → Jul 21 (covers R32 through the Final).
 async function fetchRounds() {
-  const now   = new Date();
-  const start = new Date(Math.max(new Date("2026-06-20").getTime(), now.getTime() - 14 * 86400000));
-  const end   = new Date(now.getTime() + 30 * 86400000);
-  const fmt   = d => d.toISOString().slice(0, 10).replace(/-/g, "");
-  const res   = await fetch(`${ESPN_BASE}?dates=${fmt(start)}-${fmt(end)}`);
-  const data  = await res.json();
+  const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, "");
+  const res  = await fetch(`${ESPN_BASE}?dates=${fmt(new Date("2026-06-28"))}-${fmt(new Date("2026-07-21"))}`);
+  const data = await res.json();
 
   const rounds = {};
   (data.events || []).forEach(ev => {
