@@ -4,8 +4,9 @@ import { collection, getDocs } from "https://www.gstatic.com/firebasejs/12.14.0/
 import { ESPN_BASE, LIVE_STATES, FINAL_STATES, buildCard } from "./matches.js";
 
 // ── Round config ───────────────────────────────────────────────────────────────
-const ROUND_ORDER  = ["r16", "qf", "sf", "third", "final", "other"];
+const ROUND_ORDER  = ["r32", "r16", "qf", "sf", "third", "final", "other"];
 const ROUND_LABELS = {
+  r32:   "ROUND OF 32",
   r16:   "ROUND OF 16",
   qf:    "QUARTER-FINALS",
   sf:    "SEMI-FINALS",
@@ -20,12 +21,13 @@ function detectRound(event) {
   for (const note of notes) {
     const text = (note.headline || note.type?.text || "").toLowerCase().trim();
     if (!text) continue;
-    if (/group/i.test(text))                        return null;
-    if (/round of 16|round of sixteen/i.test(text)) return "r16";
-    if (/quarter.?final/i.test(text))               return "qf";
-    if (/semi.?final/i.test(text))                  return "sf";
-    if (/third.?place/i.test(text))                 return "third";
-    if (/\bfinal\b/i.test(text))                    return "final";
+    if (/group/i.test(text))                           return null;
+    if (/round of 32|round of thirty.?two/i.test(text)) return "r32";
+    if (/round of 16|round of sixteen/i.test(text))    return "r16";
+    if (/quarter.?final/i.test(text))                  return "qf";
+    if (/semi.?final/i.test(text))                     return "sf";
+    if (/third.?place/i.test(text))                    return "third";
+    if (/\bfinal\b/i.test(text))                       return "final";
     return "other";
   }
   return null; // no notes → group stage or unknown, skip
