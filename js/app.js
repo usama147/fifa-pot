@@ -279,6 +279,9 @@ async function onTabActivated(tab, isAdmin) {
   } else if (tab === "standings") {
     const { renderStandings } = await import("./standings.js");
     renderStandings(document.getElementById("tab-standings"), isAdmin);
+  } else if (tab === "bracket") {
+    const { renderBracket } = await import("./bracket.js");
+    renderBracket(document.getElementById("tab-bracket"));
   } else if (tab === "leaderboard") {
     const { renderLeaderboard } = await import("./leaderboard.js");
     renderLeaderboard(document.getElementById("tab-leaderboard"));
