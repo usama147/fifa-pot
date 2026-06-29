@@ -985,11 +985,53 @@ body {
 
 @media (min-width: 768px) {
   .bracket-list { display: none; }
+
+  /* Top scrollbar rail — mirrors the tree's scroll position */
+  .bracket-scroll-top {
+    display: block;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    height: 12px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+  }
+  .bracket-scroll-top-inner {
+    height: 1px; /* content width is set by JS to match tree inner width */
+  }
+
   .bracket-tree {
     display: block;
     overflow-x: auto;
+    overflow-y: visible;
     padding-bottom: 16px;
   }
+}
+
+/* Custom scrollbar styling (both the top rail and the tree itself) */
+.bracket-scroll-top::-webkit-scrollbar,
+.bracket-tree::-webkit-scrollbar          { height: 6px; }
+
+.bracket-scroll-top::-webkit-scrollbar-track,
+.bracket-tree::-webkit-scrollbar-track    { background: rgba(255,255,255,0.05); border-radius: 6px; }
+
+.bracket-scroll-top::-webkit-scrollbar-thumb,
+.bracket-tree::-webkit-scrollbar-thumb    {
+  background: var(--green);
+  border-radius: 6px;
+  opacity: 0.7;
+}
+
+.bracket-scroll-top::-webkit-scrollbar-thumb:hover,
+.bracket-tree::-webkit-scrollbar-thumb:hover { background: var(--green-dark); }
+
+/* Firefox */
+.bracket-scroll-top,
+.bracket-tree { scrollbar-width: thin; scrollbar-color: var(--green) rgba(255,255,255,0.05); }
+
+/* Break bracket out of the tab-view max-width cap */
+#tab-bracket.tab-view {
+  max-width: 100%;
+  padding: 20px 30px;
 }
 
 /* Two-sided wrapper */
@@ -997,8 +1039,9 @@ body {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  min-height: 560px;
+  min-height: 600px;
   gap: 0;
+  min-width: 1200px; /* forces horizontal scroll on narrow desktops */
 }
 
 /* Left half: R32 → R16 → QF → SF (left to right) */
@@ -1021,24 +1064,24 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 170px;
-  max-width: 200px;
-  padding: 0 8px;
+  min-width: 200px;
+  max-width: 240px;
+  padding: 0 12px;
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
-  gap: 16px;
+  gap: 20px;
 }
 
 .bracket-center-label {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   letter-spacing: 2px;
   color: var(--green);
   text-align: center;
 }
 
 .bracket-center-label-third {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 8px;
 }
@@ -1047,22 +1090,28 @@ body {
 .bracket-col {
   display: flex;
   flex-direction: column;
-  min-width: 160px;
-  max-width: 200px;
+  min-width: 220px;
+  max-width: 280px;
   flex: 1;
 }
 
 .bracket-half-left  .bracket-col + .bracket-col { border-left:  1px solid var(--border); }
 .bracket-half-right .bracket-col + .bracket-col { border-left:  1px solid var(--border); }
 
+/* Column header — highlighted pill */
 .bracket-col-header {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 9px;
   letter-spacing: 2px;
-  color: var(--muted);
-  padding: 0 12px 12px;
-  white-space: nowrap;
+  color: var(--green);
   text-transform: uppercase;
+  white-space: nowrap;
+  margin: 12px 10px 16px;
+  padding: 5px 10px;
+  background: rgba(247,197,32,0.10);
+  border: 1px solid rgba(247,197,32,0.22);
+  border-radius: 6px;
+  text-align: center;
 }
 
 .bracket-slots {
@@ -1070,8 +1119,8 @@ body {
   flex-direction: column;
   flex: 1;
   justify-content: space-around;
-  gap: 6px;
-  padding: 0 8px;
+  gap: 10px;
+  padding: 0 10px 12px;
 }
 
 .bracket-slot {
@@ -1083,7 +1132,7 @@ body {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
 }
 
 .bracket-match-status {
@@ -1091,20 +1140,20 @@ body {
   font-size: 9px;
   letter-spacing: 1px;
   color: var(--muted);
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
 .bracket-divider {
   height: 1px;
   background: var(--border);
-  margin-bottom: 5px;
+  margin: 6px 0;
 }
 
 .bracket-team-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 0;
+  padding: 3px 0;
   transition: opacity 0.2s;
 }
 
@@ -1120,7 +1169,7 @@ body {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 13px;
   font-weight: 500;
-  min-width: 14px;
+  min-width: 16px;
   text-align: right;
 }
 
@@ -1132,7 +1181,7 @@ body {
   letter-spacing: 0.5px;
   border-radius: 3px;
   padding: 1px 5px;
-  margin: 2px 2px 0 0;
+  margin: 3px 2px 0 0;
 }
 
 .bracket-owner-tag.big {
@@ -1151,4 +1200,169 @@ body {
   color: var(--underdog);
   background: var(--underdog-dim);
   border: 1px solid var(--underdog-border);
+}
+
+/* Played match — gold accent border */
+.bracket-match--played {
+  border-color: rgba(247,197,32,0.45);
+}
+.bracket-match--live {
+  border-color: rgba(247,197,32,0.8);
+  box-shadow: 0 0 0 1px rgba(247,197,32,0.18);
+}
+
+/* Country flag in bracket card */
+.bracket-flag {
+  width: 18px;
+  height: 14px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.bracket-flag-ph {
+  display: inline-block;
+  width: 18px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* Bracket pair wrapper (for SVG connector positioning) */
+.bracket-pair {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-around;
+  gap: 10px;
+  position: relative;
+}
+
+/* ── Match detail modal ──────────────────────────────────────────────────────── */
+.bm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.bm-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 380px;
+  position: relative;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+.bm-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.15s;
+}
+.bm-close:hover { color: var(--text); }
+
+.bm-round {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--green);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.bm-status {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.bm-status--live {
+  color: var(--green);
+}
+
+.bm-teams {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.bm-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+  text-align: center;
+}
+.bm-team--dim { opacity: 0.38; }
+
+.bm-flag {
+  width: 52px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.bm-team-name {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.bm-score {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.bm-vs {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.bm-owners {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.bm-owner-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+.bm-owner-tag.big      { color: var(--big);      background: var(--big-dim);      border: 1px solid var(--big-border); }
+.bm-owner-tag.smaller  { color: var(--smaller);  background: var(--smaller-dim);  border: 1px solid var(--smaller-border); }
+.bm-owner-tag.underdog { color: var(--underdog); background: var(--underdog-dim); border: 1px solid var(--underdog-border); }
+
+.bm-venue {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
 }

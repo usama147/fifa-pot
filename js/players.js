@@ -4,6 +4,7 @@ import {
   doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 import { buildCard, ESPN_BASE, FINAL_STATES } from "./matches.js";
+import { fetchKnockoutEliminations, mergeEliminations, isTeamEliminated } from "./elimination.js";
 
 // ── Particle cleanup registry ─────────────────────────────────────────────────
 let particleCleanups = [];
@@ -97,7 +98,10 @@ export async function renderPlayers(container) {
     .sort((a, b) => (a.drawOrder ?? 0) - (b.drawOrder ?? 0)
                  || (a.addedAt?.seconds ?? 0) - (b.addedAt?.seconds ?? 0));
 
-  const eliminatedNames = new Set((pool.eliminatedTeams || []).map(t => t.name.toLowerCase()));
+  // Merge Firestore manual eliminations with ESPN knockout losers
+  const firestoreElim = new Set((pool.eliminatedTeams || []).map(t => t.name.toLowerCase()));
+  const espnElim = await fetchKnockoutEliminations();
+  const eliminatedNames = mergeEliminations(firestoreElim, espnElim);
   const eliminatedMap   = {};
   (pool.eliminatedTeams || []).forEach(t => {
     eliminatedMap[t.name.toLowerCase()] = t;
@@ -133,7 +137,7 @@ function showList(container, participants, pool, eliminatedNames, eliminatedMap)
 
   participants.forEach(p => {
     const teams     = Object.entries(p.teams || {}).map(([key, t]) => ({ key, ...t }));
-    const aliveTeams = teams.filter(t => !eliminatedNames.has(t.name.toLowerCase()));
+    const aliveTeams = teams.filter(t => !isTeamEliminated(t.name, eliminatedNames));
     const isOut      = teams.length > 0 && aliveTeams.length === 0;
 
     const card = mk("div", "participant-card");
@@ -178,7 +182,7 @@ function showList(container, participants, pool, eliminatedNames, eliminatedMap)
       ["big", "smaller", "underdog"].forEach(key => {
         const t = p.teams?.[key];
         if (!t) return;
-        const elim = eliminatedNames.has(t.name.toLowerCase());
+        const elim = isTeamEliminated(t.name, eliminatedNames);
         const chip = mk("span", `team-chip ${key}${elim ? " eliminated" : ""}`);
         chip.textContent = `${t.flag} ${t.name}`;
         chips.appendChild(chip);
@@ -208,7 +212,7 @@ function showDetail(container, p, participants, pool, eliminatedNames, eliminate
   container.innerHTML = "";
 
   const teams      = Object.entries(p.teams || {}).map(([key, t]) => ({ key, ...t }));
-  const aliveTeams = teams.filter(t => !eliminatedNames.has(t.name.toLowerCase()));
+  const aliveTeams = teams.filter(t => !isTeamEliminated(t.name, eliminatedNames));
   const isOut      = teams.length > 0 && aliveTeams.length === 0;
   const tierLabel  = {};
   (pool.tiers || []).forEach(t => { tierLabel[t.key] = t; });
@@ -275,7 +279,7 @@ function showDetail(container, p, participants, pool, eliminatedNames, eliminate
       const t = p.teams?.[key];
       if (!t) return;
       const tier     = tierLabel[key];
-      const elim     = eliminatedNames.has(t.name.toLowerCase());
+      const elim     = isTeamEliminated(t.name, eliminatedNames);
       const elimInfo = eliminatedMap[t.name.toLowerCase()];
 
       const row = mk("div");

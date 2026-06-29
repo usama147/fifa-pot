@@ -4,6 +4,7 @@ import {
   doc, getDoc, collection, getDocs,
   updateDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { fetchKnockoutEliminations, mergeEliminations, isTeamEliminated } from "./elimination.js";
 
 export async function renderPot(container, isAdmin) {
   container.innerHTML = `<div class="loading">Loading pot...</div>`;
@@ -38,7 +39,9 @@ export async function renderPot(container, isAdmin) {
   }
 
   const eliminated      = pool.eliminatedTeams || [];
-  const eliminatedNames = new Set(eliminated.map(t => t.name.toLowerCase()));
+  const firestoreElim   = new Set(eliminated.map(t => t.name.toLowerCase()));
+  const espnElim        = await fetchKnockoutEliminations();
+  const eliminatedNames = mergeEliminations(firestoreElim, espnElim);
   const potTotal        = pool.buyIn * participants.length;
   const finalStandings  = pool.finalStandings || { champion: null, runnerUp: null, thirdPlace: null };
 
@@ -132,7 +135,7 @@ export async function renderPot(container, isAdmin) {
 
   participants.forEach(p => {
     const teams = Object.entries(p.teams || {}).map(([key, t]) => ({ key, ...t }));
-    const aliveTeams = teams.filter(t => !eliminatedNames.has(t.name.toLowerCase()));
+    const aliveTeams = teams.filter(t => !isTeamEliminated(t.name, eliminatedNames));
     const isOut = teams.length > 0 && aliveTeams.length === 0;
 
     const row = document.createElement("div");
@@ -150,7 +153,7 @@ export async function renderPot(container, isAdmin) {
     ["big","smaller","underdog"].forEach(key => {
       const t = p.teams?.[key];
       if (!t) return;
-      const elim = eliminatedNames.has(t.name.toLowerCase());
+      const elim = isTeamEliminated(t.name, eliminatedNames);
       const chip = document.createElement("span");
       chip.className = `team-chip ${key}${elim ? " eliminated" : ""}`;
       chip.textContent = `${t.flag} ${t.name}`;
@@ -189,7 +192,7 @@ function renderEliminationPanel(container, participants, eliminatedNames) {
   const allTeams = [];
   participants.forEach(p => {
     Object.entries(p.teams || {}).forEach(([key, team]) => {
-      if (!eliminatedNames.has(team.name.toLowerCase())) {
+      if (!isTeamEliminated(team.name, eliminatedNames)) {
         allTeams.push({ participantName: p.name, participantId: p.id, tierKey: key, team });
       }
     });

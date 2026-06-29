@@ -282,9 +282,6 @@ async function onTabActivated(tab, isAdmin) {
   } else if (tab === "bracket") {
     const { renderBracket } = await import("./bracket.js");
     renderBracket(document.getElementById("tab-bracket"));
-  } else if (tab === "leaderboard") {
-    const { renderLeaderboard } = await import("./leaderboard.js");
-    renderLeaderboard(document.getElementById("tab-leaderboard"));
   } else if (tab === "players") {
     const { renderPlayers } = await import("./players.js");
     renderPlayers(document.getElementById("tab-players"));

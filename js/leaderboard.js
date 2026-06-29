@@ -4,6 +4,7 @@ import {
   doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 import { ESPN_BASE, FINAL_STATES } from "./matches.js";
+import { fetchKnockoutEliminations, mergeEliminations, isTeamEliminated } from "./elimination.js";
 
 export async function renderLeaderboard(container) {
   container.innerHTML = `<div class="loading">Loading leaderboard...</div>`;
@@ -32,7 +33,10 @@ export async function renderLeaderboard(container) {
   }
 
   const participants = partsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const eliminatedNames = new Set((pool.eliminatedTeams || []).map(t => t.name.toLowerCase()));
+  // Merge Firestore manual eliminations with ESPN knockout losers
+  const firestoreElim = new Set((pool.eliminatedTeams || []).map(t => t.name.toLowerCase()));
+  const espnElim = await fetchKnockoutEliminations();
+  const eliminatedNames = mergeEliminations(firestoreElim, espnElim);
 
   // Fetch all completed matches since tournament start
   let events = [];
@@ -67,7 +71,7 @@ export async function renderLeaderboard(container) {
         name:      t.name,
         flag:      t.flag,
         goals,
-        eliminated: eliminatedNames.has(t.name.toLowerCase())
+        eliminated: isTeamEliminated(t.name, eliminatedNames)
       };
     }).filter(Boolean);
 

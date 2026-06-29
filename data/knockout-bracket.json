@@ -1,0 +1,64 @@
+{
+  "source": "https://www.thestatsapi.com/world-cup/data",
+  "description": "FIFA World Cup 2026 knockout bracket structure with match numbers, venues, and feed-forward references.",
+  "bracket": {
+    "round-of-32": [
+      { "matchNumber": 73, "homeTeam": "Group A runners-up", "awayTeam": "Group B runners-up", "stadium": "SoFi Stadium", "hostCity": "los-angeles", "date": "2026-06-28", "feedsInto": 90 },
+      { "matchNumber": 74, "homeTeam": "Group E winners", "awayTeam": "Group A/B/C/D/F third place", "stadium": "Gillette Stadium", "hostCity": "boston", "date": "2026-06-29", "feedsInto": 89 },
+      { "matchNumber": 75, "homeTeam": "Group F winners", "awayTeam": "Group C runners-up", "stadium": "Estadio BBVA", "hostCity": "monterrey", "date": "2026-06-29", "feedsInto": 90 },
+      { "matchNumber": 76, "homeTeam": "Group C winners", "awayTeam": "Group F runners-up", "stadium": "NRG Stadium", "hostCity": "houston", "date": "2026-06-29", "feedsInto": 91 },
+      { "matchNumber": 77, "homeTeam": "Group I winners", "awayTeam": "Group C/D/F/G/H third place", "stadium": "MetLife Stadium", "hostCity": "new-york", "date": "2026-06-30", "feedsInto": 89 },
+      { "matchNumber": 78, "homeTeam": "Group E runners-up", "awayTeam": "Group I runners-up", "stadium": "AT&T Stadium", "hostCity": "dallas", "date": "2026-06-30", "feedsInto": 91 },
+      { "matchNumber": 79, "homeTeam": "Group A winners", "awayTeam": "Group C/E/F/H/I third place", "stadium": "Estadio Azteca", "hostCity": "mexico-city", "date": "2026-06-30", "feedsInto": 92 },
+      { "matchNumber": 80, "homeTeam": "Group L winners", "awayTeam": "Group E/H/I/J/K third place", "stadium": "Mercedes-Benz Stadium", "hostCity": "atlanta", "date": "2026-07-01", "feedsInto": 92 },
+      { "matchNumber": 81, "homeTeam": "Group D winners", "awayTeam": "Group B/E/F/I/J third place", "stadium": "Levi's Stadium", "hostCity": "san-francisco", "date": "2026-07-01", "feedsInto": 94 },
+      { "matchNumber": 82, "homeTeam": "Group G winners", "awayTeam": "Group A/E/H/I/J third place", "stadium": "Lumen Field", "hostCity": "seattle", "date": "2026-07-01", "feedsInto": 94 },
+      { "matchNumber": 83, "homeTeam": "Group K runners-up", "awayTeam": "Group L runners-up", "stadium": "BMO Field", "hostCity": "toronto", "date": "2026-07-02", "feedsInto": 93 },
+      { "matchNumber": 84, "homeTeam": "Group H winners", "awayTeam": "Group J runners-up", "stadium": "SoFi Stadium", "hostCity": "los-angeles", "date": "2026-07-02", "feedsInto": 93 },
+      { "matchNumber": 85, "homeTeam": "Group B winners", "awayTeam": "Group E/F/G/I/J third place", "stadium": "BC Place", "hostCity": "vancouver", "date": "2026-07-02", "feedsInto": 96 },
+      { "matchNumber": 86, "homeTeam": "Group J winners", "awayTeam": "Group H runners-up", "stadium": "Hard Rock Stadium", "hostCity": "miami", "date": "2026-07-03", "feedsInto": 95 },
+      { "matchNumber": 87, "homeTeam": "Group K winners", "awayTeam": "Group D/E/I/J/L third place", "stadium": "Arrowhead Stadium", "hostCity": "kansas-city", "date": "2026-07-03", "feedsInto": 96 },
+      { "matchNumber": 88, "homeTeam": "Group D runners-up", "awayTeam": "Group G runners-up", "stadium": "AT&T Stadium", "hostCity": "dallas", "date": "2026-07-03", "feedsInto": 95 }
+    ],
+    "round-of-16": [
+      { "matchNumber": 89, "homeTeam": "Winner Match 74", "awayTeam": "Winner Match 77", "stadium": "Lincoln Financial Field", "hostCity": "philadelphia", "date": "2026-07-04", "feedsInto": 97 },
+      { "matchNumber": 90, "homeTeam": "Winner Match 73", "awayTeam": "Winner Match 75", "stadium": "NRG Stadium", "hostCity": "houston", "date": "2026-07-04", "feedsInto": 97 },
+      { "matchNumber": 91, "homeTeam": "Winner Match 76", "awayTeam": "Winner Match 78", "stadium": "MetLife Stadium", "hostCity": "new-york", "date": "2026-07-05", "feedsInto": 99 },
+      { "matchNumber": 92, "homeTeam": "Winner Match 79", "awayTeam": "Winner Match 80", "stadium": "Estadio Azteca", "hostCity": "mexico-city", "date": "2026-07-05", "feedsInto": 99 },
+      { "matchNumber": 93, "homeTeam": "Winner Match 83", "awayTeam": "Winner Match 84", "stadium": "AT&T Stadium", "hostCity": "dallas", "date": "2026-07-06", "feedsInto": 98 },
+      { "matchNumber": 94, "homeTeam": "Winner Match 81", "awayTeam": "Winner Match 82", "stadium": "Lumen Field", "hostCity": "seattle", "date": "2026-07-06", "feedsInto": 98 },
+      { "matchNumber": 95, "homeTeam": "Winner Match 86", "awayTeam": "Winner Match 88", "stadium": "Mercedes-Benz Stadium", "hostCity": "atlanta", "date": "2026-07-07", "feedsInto": 100 },
+      { "matchNumber": 96, "homeTeam": "Winner Match 85", "awayTeam": "Winner Match 87", "stadium": "BC Place", "hostCity": "vancouver", "date": "2026-07-07", "feedsInto": 100 }
+    ],
+    "quarter-finals": [
+      { "matchNumber": 97, "homeTeam": "Winner Match 89", "awayTeam": "Winner Match 90", "stadium": "Gillette Stadium", "hostCity": "boston", "date": "2026-07-09", "feedsInto": 101 },
+      { "matchNumber": 98, "homeTeam": "Winner Match 93", "awayTeam": "Winner Match 94", "stadium": "SoFi Stadium", "hostCity": "los-angeles", "date": "2026-07-10", "feedsInto": 101 },
+      { "matchNumber": 99, "homeTeam": "Winner Match 91", "awayTeam": "Winner Match 92", "stadium": "Hard Rock Stadium", "hostCity": "miami", "date": "2026-07-11", "feedsInto": 102 },
+      { "matchNumber": 100, "homeTeam": "Winner Match 95", "awayTeam": "Winner Match 96", "stadium": "Arrowhead Stadium", "hostCity": "kansas-city", "date": "2026-07-11", "feedsInto": 102 }
+    ],
+    "semi-finals": [
+      { "matchNumber": 101, "homeTeam": "Winner Match 97", "awayTeam": "Winner Match 98", "stadium": "AT&T Stadium", "hostCity": "dallas", "date": "2026-07-14", "feedsInto": 104 },
+      { "matchNumber": 102, "homeTeam": "Winner Match 99", "awayTeam": "Winner Match 100", "stadium": "Mercedes-Benz Stadium", "hostCity": "atlanta", "date": "2026-07-15", "feedsInto": 104 }
+    ],
+    "third-place": [
+      { "matchNumber": 103, "homeTeam": "Loser Match 101", "awayTeam": "Loser Match 102", "stadium": "Hard Rock Stadium", "hostCity": "miami", "date": "2026-07-18" }
+    ],
+    "final": [
+      { "matchNumber": 104, "homeTeam": "Winner Match 101", "awayTeam": "Winner Match 102", "stadium": "MetLife Stadium", "hostCity": "new-york", "date": "2026-07-19" }
+    ]
+  },
+  "bracketOrder": {
+    "left": {
+      "r32": [74, 77, 73, 75, 83, 84, 81, 82],
+      "r16": [89, 90, 93, 94],
+      "qf": [97, 98],
+      "sf": [101]
+    },
+    "right": {
+      "r32": [76, 78, 79, 80, 86, 88, 85, 87],
+      "r16": [91, 92, 95, 96],
+      "qf": [99, 100],
+      "sf": [102]
+    }
+  }
+}

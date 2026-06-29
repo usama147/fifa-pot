@@ -3,6 +3,7 @@ import { db } from "./config.js";
 import {
   doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { fetchKnockoutEliminations, mergeEliminations, isTeamEliminated } from "./elimination.js";
 
 export async function renderPool(container) {
   container.innerHTML = `<div class="loading">Loading pool...</div>`;
@@ -55,10 +56,12 @@ export async function renderPool(container) {
   }
   container.appendChild(hdr);
 
-  // Eliminated teams set for quick lookup
-  const eliminatedSet = new Set(
+  // Eliminated teams: merge Firestore manual list with ESPN knockout losers
+  const firestoreElim = new Set(
     (pool.eliminatedTeams || []).map(t => t.name.toLowerCase())
   );
+  const espnElim = await fetchKnockoutEliminations();
+  const eliminatedSet = mergeEliminations(firestoreElim, espnElim);
 
   // Tier label map
   const tierLabel = {};
@@ -70,7 +73,7 @@ export async function renderPool(container) {
     card.className = "participant-card";
 
     const allTeams = Object.values(p.teams || {});
-    const alive = allTeams.filter(t => !eliminatedSet.has(t.name.toLowerCase()));
+    const alive = allTeams.filter(t => !isTeamEliminated(t.name, eliminatedSet));
     const isOut = alive.length === 0 && allTeams.length > 0;
 
     const nameDiv = document.createElement("div");
@@ -96,7 +99,7 @@ export async function renderPool(container) {
       const team = p.teams?.[key];
       if (!team) return;
       const tier = tierLabel[key];
-      const isElim = eliminatedSet.has(team.name.toLowerCase());
+      const isElim = isTeamEliminated(team.name, eliminatedSet);
       const chip = document.createElement("span");
       chip.className = `team-chip ${key}${isElim ? " eliminated" : ""}`;
       chip.textContent = `${team.flag} ${team.name}`;
