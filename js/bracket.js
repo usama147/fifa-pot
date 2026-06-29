@@ -162,5 +162,125 @@ function renderList(container, rounds, poolTeams) {
   });
 }
 
-// ── Desktop tree view (stub — filled in Task 4) ───────────────────────────────
-function renderTree(container, rounds, poolTeams) {}
+// ── Desktop tree view ─────────────────────────────────────────────────────────
+function renderTree(container, rounds, poolTeams) {
+  ROUND_ORDER.forEach(key => {
+    const events = rounds[key];
+    if (!events?.length) return;
+
+    const col = document.createElement("div");
+    col.className = "bracket-col";
+
+    const hdr = document.createElement("div");
+    hdr.className = "bracket-col-header";
+    hdr.textContent = ROUND_LABELS[key] || key.toUpperCase();
+    col.appendChild(hdr);
+
+    const slots = document.createElement("div");
+    slots.className = "bracket-slots";
+
+    [...events]
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(ev => slots.appendChild(buildBracketSlot(ev, poolTeams)));
+
+    col.appendChild(slots);
+    container.appendChild(col);
+  });
+}
+
+function buildBracketSlot(event, poolTeams) {
+  const comp  = event.competitions?.[0];
+  const comps = comp?.competitors || [];
+  const home  = comps.find(c => c.homeAway === "home");
+  const away  = comps.find(c => c.homeAway === "away");
+  const s     = event.status?.type?.name || "STATUS_SCHEDULED";
+  const isLive  = LIVE_STATES.has(s);
+  const isFinal = FINAL_STATES.has(s);
+
+  const homeScore = parseInt(home?.score ?? 0, 10);
+  const awayScore = parseInt(away?.score ?? 0, 10);
+  const homeWon   = isFinal && homeScore > awayScore;
+  const awayWon   = isFinal && awayScore > homeScore;
+
+  const homePool = poolTeams.filter(pt => teamMatches(home?.team?.displayName || "", pt.team.name));
+  const awayPool = poolTeams.filter(pt => teamMatches(away?.team?.displayName || "", pt.team.name));
+
+  const slot = document.createElement("div");
+  slot.className = "bracket-slot";
+
+  const card = document.createElement("div");
+  card.className = "bracket-match";
+
+  // Status line
+  const statusEl = document.createElement("div");
+  statusEl.className = "bracket-match-status";
+  if (isLive) {
+    statusEl.textContent = event.status?.displayClock ? `LIVE · ${event.status.displayClock}` : "LIVE";
+    statusEl.style.color = "var(--green)";
+  } else if (isFinal) {
+    statusEl.textContent = bracketFinalLabel(event);
+  } else {
+    statusEl.textContent = bracketKickoff(event.date);
+  }
+  card.appendChild(statusEl);
+
+  // Divider
+  const divider = document.createElement("div");
+  divider.className = "bracket-divider";
+  card.appendChild(divider);
+
+  // Home team row + owner tags
+  card.appendChild(buildBracketTeamRow(home, isFinal && !homeWon, isFinal || isLive));
+  homePool.forEach(pt => card.appendChild(buildBracketOwnerTag(pt)));
+
+  // Away team row + owner tags
+  card.appendChild(buildBracketTeamRow(away, isFinal && !awayWon, isFinal || isLive));
+  awayPool.forEach(pt => card.appendChild(buildBracketOwnerTag(pt)));
+
+  slot.appendChild(card);
+  return slot;
+}
+
+function buildBracketTeamRow(competitor, dimmed, showScore) {
+  const row = document.createElement("div");
+  row.className = "bracket-team-row";
+  if (dimmed) row.style.opacity = "0.35";
+
+  const name = document.createElement("span");
+  name.className = "bracket-team-name";
+  name.textContent = competitor?.team?.displayName || "TBC";
+  row.appendChild(name);
+
+  if (showScore) {
+    const score = document.createElement("span");
+    score.className = "bracket-score";
+    score.textContent = competitor?.score ?? "–";
+    row.appendChild(score);
+  }
+  return row;
+}
+
+function buildBracketOwnerTag(pt) {
+  const tag = document.createElement("span");
+  tag.className = `bracket-owner-tag ${pt.tierKey}`;
+  tag.textContent = pt.participantName;
+  return tag;
+}
+
+function bracketFinalLabel(event) {
+  const d = (event.status?.type?.shortDetail || "").toLowerCase();
+  if (/pen/i.test(d))       return "FT · PENS";
+  if (/extra|aet/i.test(d)) return "FT · AET";
+  return "FT";
+}
+
+function bracketKickoff(dateStr) {
+  if (!dateStr) return "TBC";
+  const d   = new Date(dateStr);
+  const now = new Date();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return `Today · ${time}`;
+  const tom = new Date(now); tom.setDate(now.getDate() + 1);
+  if (d.toDateString() === tom.toDateString()) return `Tomorrow · ${time}`;
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} · ${time}`;
+}

@@ -982,3 +982,127 @@ body {
   margin-top: 12px;
   font-family: 'IBM Plex Mono', monospace;
 }
+
+@media (min-width: 768px) {
+  .bracket-list { display: none; }
+  .bracket-tree {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    align-items: flex-start;
+    min-height: 400px;
+  }
+}
+
+/* Desktop tree columns */
+.bracket-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  max-width: 230px;
+  flex: 1;
+}
+
+.bracket-col + .bracket-col {
+  border-left: 1px solid var(--border);
+}
+
+.bracket-col-header {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  padding: 0 12px 12px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.bracket-slots {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-around;
+  gap: 6px;
+  padding: 0 8px;
+}
+
+.bracket-slot {
+  position: relative;
+}
+
+/* Compact match card */
+.bracket-match {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.bracket-match-status {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.bracket-divider {
+  height: 1px;
+  background: var(--border);
+  margin-bottom: 5px;
+}
+
+.bracket-team-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  transition: opacity 0.2s;
+}
+
+.bracket-team-name {
+  font-size: 12px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracket-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 14px;
+  text-align: right;
+}
+
+/* Owner tags in bracket (smaller than main match card owner-tags) */
+.bracket-owner-tag {
+  display: inline-block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin: 2px 2px 0 0;
+}
+
+.bracket-owner-tag.big {
+  color: var(--big);
+  background: var(--big-dim);
+  border: 1px solid var(--big-border);
+}
+
+.bracket-owner-tag.smaller {
+  color: var(--smaller);
+  background: var(--smaller-dim);
+  border: 1px solid var(--smaller-border);
+}
+
+.bracket-owner-tag.underdog {
+  color: var(--underdog);
+  background: var(--underdog-dim);
+  border: 1px solid var(--underdog-border);
+}
