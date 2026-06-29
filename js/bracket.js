@@ -197,30 +197,132 @@ function renderList(container, rounds, poolTeams) {
   });
 }
 
-// ── Desktop tree view ─────────────────────────────────────────────────────────
+// ── Bracket side detection ─────────────────────────────────────────────────────
+// Left half of the WC2026 bracket (hardcoded from FIFA's draw)
+const LEFT_TEAMS = new Set([
+  "germany","paraguay","france","sweden",
+  "south africa","canada","netherlands","morocco",
+  "portugal","croatia","spain","austria",
+  "united states","bosnia-herzegovina","bosnia and herzegovina","belgium","senegal",
+]);
+const RIGHT_TEAMS = new Set([
+  "brazil","japan","ivory coast","côte d'ivoire","cote d'ivoire","norway",
+  "mexico","ecuador","england","congo dr","dr congo","democratic republic of the congo",
+  "argentina","cape verde","colombia","ghana",
+  "australia","egypt","switzerland","algeria",
+]);
+
+function getEventSide(ev) {
+  const comps = ev.competitions?.[0]?.competitors || [];
+  for (const c of comps) {
+    const n = (c.team?.displayName || "").toLowerCase();
+    if (LEFT_TEAMS.has(n))  return "left";
+    if (RIGHT_TEAMS.has(n)) return "right";
+  }
+  // Also search the event name (helps for "Canada vs TBC" style entries)
+  const evName = (ev.name || "").toLowerCase();
+  for (const t of LEFT_TEAMS)  { if (evName.includes(t)) return "left"; }
+  for (const t of RIGHT_TEAMS) { if (evName.includes(t)) return "right"; }
+  return null; // truly unknown — caller will balance
+}
+
+// ── Desktop tree view — two-sided FIFA-style bracket ─────────────────────────
 function renderTree(container, rounds, poolTeams) {
-  ROUND_ORDER.forEach(key => {
-    const events = rounds[key];
-    if (!events?.length) return;
+  const byDate = arr => [...arr].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    const col = document.createElement("div");
-    col.className = "bracket-col";
+  const left   = {};
+  const right  = {};
+  const center = {};
 
-    const hdr = document.createElement("div");
-    hdr.className = "bracket-col-header";
-    hdr.textContent = ROUND_LABELS[key] || key.toUpperCase();
-    col.appendChild(hdr);
+  // R32: known teams → deterministic side assignment
+  if (rounds.r32) {
+    left.r32  = byDate(rounds.r32.filter(ev => getEventSide(ev) !== "right"));
+    right.r32 = byDate(rounds.r32.filter(ev => getEventSide(ev) === "right"));
+  }
 
-    const slots = document.createElement("div");
-    slots.className = "bracket-slots";
-
-    [...events]
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .forEach(ev => slots.appendChild(buildBracketSlot(ev, poolTeams)));
-
-    col.appendChild(slots);
-    container.appendChild(col);
+  // R16, QF, SF: detect from team names; balance unknowns across sides
+  ["r16", "qf", "sf"].forEach(key => {
+    if (!rounds[key]) return;
+    left[key]  = [];
+    right[key] = [];
+    const unassigned = [];
+    byDate(rounds[key]).forEach(ev => {
+      const side = getEventSide(ev);
+      if (side === "left")        left[key].push(ev);
+      else if (side === "right") right[key].push(ev);
+      else                        unassigned.push(ev);
+    });
+    // Distribute unknowns to keep sides balanced
+    unassigned.forEach(ev => {
+      (left[key].length <= right[key].length ? left : right)[key].push(ev);
+    });
   });
+
+  // Final + 3rd place → center column
+  if (rounds.final) center.final = rounds.final;
+  if (rounds.third) center.third = rounds.third;
+
+  // ── DOM construction ─────────────────────────────────────────────────────────
+  const wrapper = document.createElement("div");
+  wrapper.className = "bracket-wrapper";
+
+  // Left half: R32 → R16 → QF → SF (columns left to right, converging inward)
+  const leftEl = document.createElement("div");
+  leftEl.className = "bracket-half bracket-half-left";
+  ["r32", "r16", "qf", "sf"].forEach(key => {
+    if (!left[key]?.length) return;
+    leftEl.appendChild(buildBracketColumn(key, left[key], poolTeams));
+  });
+  wrapper.appendChild(leftEl);
+
+  // Center: Final + 3rd place
+  if (center.final?.length || center.third?.length) {
+    const centerEl = document.createElement("div");
+    centerEl.className = "bracket-center";
+    if (center.final?.length) {
+      const lbl = document.createElement("div");
+      lbl.className = "bracket-center-label";
+      lbl.textContent = "FINAL";
+      centerEl.appendChild(lbl);
+      center.final.forEach(ev => centerEl.appendChild(buildBracketSlot(ev, poolTeams)));
+    }
+    if (center.third?.length) {
+      const lbl = document.createElement("div");
+      lbl.className = "bracket-center-label bracket-center-label-third";
+      lbl.textContent = "3RD PLACE";
+      centerEl.appendChild(lbl);
+      center.third.forEach(ev => centerEl.appendChild(buildBracketSlot(ev, poolTeams)));
+    }
+    wrapper.appendChild(centerEl);
+  }
+
+  // Right half: SF → QF → R16 → R32 (mirrored — columns from center outward)
+  const rightEl = document.createElement("div");
+  rightEl.className = "bracket-half bracket-half-right";
+  ["sf", "qf", "r16", "r32"].forEach(key => {
+    if (!right[key]?.length) return;
+    rightEl.appendChild(buildBracketColumn(key, right[key], poolTeams));
+  });
+  wrapper.appendChild(rightEl);
+
+  container.appendChild(wrapper);
+}
+
+function buildBracketColumn(key, events, poolTeams) {
+  const col = document.createElement("div");
+  col.className = "bracket-col";
+
+  const hdr = document.createElement("div");
+  hdr.className = "bracket-col-header";
+  hdr.textContent = ROUND_LABELS[key] || key.toUpperCase();
+  col.appendChild(hdr);
+
+  const slots = document.createElement("div");
+  slots.className = "bracket-slots";
+  events.forEach(ev => slots.appendChild(buildBracketSlot(ev, poolTeams)));
+  col.appendChild(slots);
+
+  return col;
 }
 
 function buildBracketSlot(event, poolTeams) {

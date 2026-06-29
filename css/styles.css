@@ -986,28 +986,74 @@ body {
 @media (min-width: 768px) {
   .bracket-list { display: none; }
   .bracket-tree {
-    display: flex;
-    flex-direction: row;
-    gap: 0;
+    display: block;
     overflow-x: auto;
     padding-bottom: 16px;
-    align-items: flex-start;
-    min-height: 400px;
   }
+}
+
+/* Two-sided wrapper */
+.bracket-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-height: 560px;
+  gap: 0;
+}
+
+/* Left half: R32 → R16 → QF → SF (left to right) */
+.bracket-half-left {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+}
+
+/* Right half: SF → QF → R16 → R32 (mirrored from center outward) */
+.bracket-half-right {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+}
+
+/* Center column: Final + 3rd place */
+.bracket-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 170px;
+  max-width: 200px;
+  padding: 0 8px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  gap: 16px;
+}
+
+.bracket-center-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--green);
+  text-align: center;
+}
+
+.bracket-center-label-third {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
 }
 
 /* Desktop tree columns */
 .bracket-col {
   display: flex;
   flex-direction: column;
-  min-width: 190px;
-  max-width: 230px;
+  min-width: 160px;
+  max-width: 200px;
   flex: 1;
 }
 
-.bracket-col + .bracket-col {
-  border-left: 1px solid var(--border);
-}
+.bracket-half-left  .bracket-col + .bracket-col { border-left:  1px solid var(--border); }
+.bracket-half-right .bracket-col + .bracket-col { border-left:  1px solid var(--border); }
 
 .bracket-col-header {
   font-family: 'IBM Plex Mono', monospace;
