@@ -969,3 +969,16 @@ body {
   position: relative;
   z-index: 1;
 }
+
+/* ── Bracket tab ──────────────────────────────────────────────────────────────── */
+
+.bracket-list  { display: block; }
+.bracket-tree  { display: none; }
+
+.bracket-timestamp {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+  margin-top: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+}

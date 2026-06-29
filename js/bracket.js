@@ -123,6 +123,44 @@ function renderViews(container, rounds, poolTeams) {
   container.appendChild(ts);
 }
 
-// Stubs — filled in Tasks 3 & 4
-function renderList(container, rounds, poolTeams) {}
+// ── Mobile list view ──────────────────────────────────────────────────────────
+function renderList(container, rounds, poolTeams) {
+  ROUND_ORDER.forEach(key => {
+    const events = rounds[key];
+    if (!events?.length) return;
+
+    const isLiveRound = events.some(ev => LIVE_STATES.has(ev.status?.type?.name || ""));
+
+    // Section header (same style as matches.js sectionHeader())
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin:18px 0 10px;";
+    if (isLiveRound) {
+      const dot = document.createElement("span");
+      dot.className = "live-dot";
+      hdr.appendChild(dot);
+    }
+    const text = document.createElement("span");
+    text.style.cssText = "font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);white-space:nowrap;";
+    text.textContent = ROUND_LABELS[key] || key.toUpperCase();
+    hdr.appendChild(text);
+    const line = document.createElement("div");
+    line.style.cssText = "flex:1;height:1px;background:var(--border);";
+    hdr.appendChild(line);
+    container.appendChild(hdr);
+
+    // Sort: live → completed (newest first) → upcoming (soonest first)
+    const live     = events.filter(ev => LIVE_STATES.has(ev.status?.type?.name || ""));
+    const done     = events.filter(ev => FINAL_STATES.has(ev.status?.type?.name || "")).sort((a, b) => new Date(b.date) - new Date(a.date));
+    const upcoming = events.filter(ev => !LIVE_STATES.has(ev.status?.type?.name || "") && !FINAL_STATES.has(ev.status?.type?.name || "")).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    [...live, ...done, ...upcoming].forEach(ev => {
+      const s       = ev.status?.type?.name || "STATUS_SCHEDULED";
+      const isLive  = LIVE_STATES.has(s);
+      const isFinal = FINAL_STATES.has(s);
+      container.appendChild(buildCard(ev, poolTeams, isLive, isFinal));
+    });
+  });
+}
+
+// ── Desktop tree view (stub — filled in Task 4) ───────────────────────────────
 function renderTree(container, rounds, poolTeams) {}
