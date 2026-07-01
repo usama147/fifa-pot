@@ -17,6 +17,16 @@ const ROUND_LABELS = {
 
 // ── Round detection ────────────────────────────────────────────────────────────
 function detectRound(event) {
+  // Prefer ESPN's season.slug — the most reliable round indicator
+  const slug = (event.season?.slug || "").toLowerCase();
+  if (slug.includes("round-of-32"))    return "r32";
+  if (slug.includes("round-of-16"))    return "r16";
+  if (/quarterfinal/i.test(slug))      return "qf";
+  if (/semifinal/i.test(slug))         return "sf";
+  if (/3rd-place|third.?place/i.test(slug)) return "third";
+  if (/\bfinal\b/i.test(slug))        return "final";
+
+  // Fallback: check notes headlines
   const notes = event.competitions?.[0]?.notes || [];
   for (const note of notes) {
     const t = (note.headline || note.type?.text || "").toLowerCase().trim();
@@ -29,6 +39,8 @@ function detectRound(event) {
     if (/third.?place/i.test(t))     return "third";
     if (/\bfinal\b/i.test(t))        return "final";
   }
+
+  // Fallback: infer from event name references
   const d    = new Date(event.date || "");
   const name = event.name || "";
   if (d < new Date("2026-06-28T00:00:00Z")) return null;
@@ -36,6 +48,8 @@ function detectRound(event) {
   if (/round of 16.+winner|winner.+round of 16/i.test(name)) return "qf";
   if (/quarter.?final.+winner|winner.+quarter.?final/i.test(name)) return "sf";
   if (/semi.?final.+winner|winner.+semi.?final/i.test(name)) return "final";
+
+  // Last resort: date-based detection
   if (d <= new Date("2026-07-05T23:59:59Z")) return "r32";
   if (d <= new Date("2026-07-10T23:59:59Z")) return "r16";
   if (d <= new Date("2026-07-13T23:59:59Z")) return "qf";
@@ -49,36 +63,36 @@ function detectRound(event) {
 // bracket order — so we hardcode the visual top-to-bottom order per half.
 // Each entry = name fragments that identify the teams in one R32 match.
 const R32_L = [
-  ["germany","paraguay"],                                         // M74  slot 0
-  ["france","sweden"],                                            // M77  slot 1
-  ["south africa","canada"],                                      // M73  slot 2
-  ["netherlands","morocco"],                                      // M75  slot 3
-  ["portugal","croatia"],                                         // M83  slot 4
-  ["spain","austria"],                                            // M84  slot 5
-  ["united states","bosnia","herze"],                             // M81  slot 6
-  ["belgium","senegal"],                                          // M82  slot 7
+  ["germany","paraguay"],                                         // M74  slot 0  ─┐ R16_2 (M89)
+  ["france","sweden"],                                            // M77  slot 1  ─┘
+  ["south africa","canada"],                                      // M73  slot 2  ─┐ R16_1 (M90)
+  ["netherlands","morocco"],                                      // M75  slot 3  ─┘
+  ["portugal","croatia"],                                         // M83  slot 4  ─┐ R16_5 (M93)
+  ["spain","austria"],                                            // M84  slot 5  ─┘
+  ["united states","bosnia","herze"],                             // M81  slot 6  ─┐ R16_6 (M94)
+  ["england","congo"],                                            // M80  slot 7  ─┘
 ];
 const R32_R = [
-  ["brazil","japan"],                                             // M76  slot 0
-  ["ivory coast","côte","cote","norway"],                         // M78  slot 1
-  ["mexico","ecuador"],                                           // M79  slot 2
-  ["england","congo"],                                            // M80  slot 3
-  ["argentina","cape verde"],                                     // M86  slot 4
-  ["australia","egypt"],                                          // M88  slot 5
-  ["switzerland","algeria"],                                      // M85  slot 6
-  ["colombia","ghana"],                                           // M87  slot 7
+  ["brazil","japan"],                                             // M76  slot 0  ─┐ R16_3 (M91)
+  ["ivory coast","côte","cote","norway"],                         // M78  slot 1  ─┘
+  ["mexico","ecuador"],                                           // M79  slot 2  ─┐ R16_4 (M92)
+  ["belgium","senegal"],                                          // M82  slot 3  ─┘
+  ["switzerland","algeria"],                                      // M85  slot 4  ─┐ R16_7 (M95)
+  ["argentina","cape verde"],                                     // M86  slot 5  ─┘
+  ["australia","egypt"],                                          // M88  slot 6  ─┐ R16_8 (M96)
+  ["colombia","ghana"],                                           // M87  slot 7  ─┘
 ];
 
 // FIFA match numbers per bracket half (top-to-bottom visual order)
 // Source: thestatsapi.com/world-cup/data
 const MATCH_NUMS_L = {
-  r32: [74, 77, 73, 75, 83, 84, 81, 82],
+  r32: [74, 77, 73, 75, 83, 84, 81, 80],
   r16: [89, 90, 93, 94],
   qf:  [97, 98],
   sf:  [101],
 };
 const MATCH_NUMS_R = {
-  r32: [76, 78, 79, 80, 86, 88, 85, 87],
+  r32: [76, 78, 79, 82, 85, 86, 88, 87],
   r16: [91, 92, 95, 96],
   qf:  [99, 100],
   sf:  [102],

@@ -6,7 +6,7 @@ import { normalizeTeamName, DEFAULT_TIERS } from "./config.js";
 const KNOCKOUT_SLUGS = [
   "round-of-32", "round-of-16", "quarterfinals",
   "quarter-finals", "semifinals", "semi-finals",
-  "third-place", "final"
+  "third-place", "3rd-place", "final"
 ];
 
 const KNOCKOUT_RE = /round of 32|round of 16|quarterfinal|semifinal|third.place|\bfinal\b/i;
@@ -95,7 +95,7 @@ export async function fetchKnockoutEliminations() {
       if (!FINAL_STATES.has(ev.status?.type?.name || "")) continue;
 
       // Third-place match: both teams already eliminated from SF
-      if (/third.place/i.test(headline) || /third.place/i.test(slug)) continue;
+      if (/third.place|3rd.place/i.test(headline) || /third.place|3rd.place/i.test(slug)) continue;
 
       const comps = ev.competitions?.[0]?.competitors || [];
       if (comps.length !== 2) continue;

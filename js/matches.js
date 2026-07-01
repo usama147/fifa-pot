@@ -6,7 +6,7 @@ import { teamMatches } from "./config.js";
 export const ESPN_BASE    = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard";
 export const ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary";
 export const LIVE_STATES  = new Set(["STATUS_IN_PROGRESS", "STATUS_HALFTIME", "STATUS_END_PERIOD"]);
-export const FINAL_STATES = new Set(["STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_FT_EXTRA_TIME", "STATUS_PENALTIES"]);
+export const FINAL_STATES = new Set(["STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_FT_EXTRA_TIME", "STATUS_PENALTIES", "STATUS_FINAL_PEN"]);
 let pollInterval = null;
 
 export async function renderMatches(container) {
@@ -57,43 +57,107 @@ function renderMatchCards(container, events, poolTeams) {
     return;
   }
 
-  const results  = [];
-  const live     = [];
-  const upcoming = [];
+  const now       = new Date();
+  const todayStr  = now.toDateString();
+  const today     = [];
+  const results   = [];
+  const upcoming  = [];
 
   events.forEach(ev => {
-    const s = ev.status?.type?.name || "STATUS_SCHEDULED";
-    if (FINAL_STATES.has(s))     results.push(ev);
-    else if (LIVE_STATES.has(s)) live.push(ev);
-    else                         upcoming.push(ev);
+    const s      = ev.status?.type?.name || "STATUS_SCHEDULED";
+    const evDate = new Date(ev.date || "");
+    const isToday = evDate.toDateString() === todayStr;
+
+    if (isToday) {
+      today.push(ev);
+    } else if (FINAL_STATES.has(s)) {
+      results.push(ev);
+    } else {
+      upcoming.push(ev);
+    }
   });
 
+  // Sort: today by time, results newest-first, upcoming soonest-first
+  today.sort((a, b) => {
+    const sa = a.status?.type?.name || "";
+    const sb = b.status?.type?.name || "";
+    const la = LIVE_STATES.has(sa) ? 0 : FINAL_STATES.has(sa) ? 1 : 2;
+    const lb = LIVE_STATES.has(sb) ? 0 : FINAL_STATES.has(sb) ? 1 : 2;
+    return la - lb || new Date(a.date) - new Date(b.date);
+  });
   results.sort((a, b)  => new Date(b.date) - new Date(a.date));
   upcoming.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  if (live.length)     { container.appendChild(sectionHeader("LIVE NOW", true)); live.forEach(ev => container.appendChild(buildCard(ev, poolTeams, true,  false))); }
-  if (results.length)  { container.appendChild(sectionHeader("RESULTS"));        results.forEach(ev => container.appendChild(buildCard(ev, poolTeams, false, true))); }
-  if (upcoming.length) { container.appendChild(sectionHeader("UPCOMING MATCHES")); upcoming.forEach(ev => container.appendChild(buildCard(ev, poolTeams, false, false))); }
+  // ── Today's matches box ────────────────────────────────────────────────────
+  if (today.length) {
+    const todayBox = document.createElement("div");
+    todayBox.className = "today-matches-box";
+
+    const todayLabel = document.createElement("div");
+    todayLabel.className = "today-matches-label";
+    const hasLive = today.some(ev => LIVE_STATES.has(ev.status?.type?.name || ""));
+    if (hasLive) {
+      const dot = document.createElement("span");
+      dot.className = "live-dot";
+      todayLabel.appendChild(dot);
+    }
+    todayLabel.appendChild(document.createTextNode("TODAY'S MATCHES"));
+    todayBox.appendChild(todayLabel);
+
+    today.forEach(ev => {
+      const s = ev.status?.type?.name || "STATUS_SCHEDULED";
+      todayBox.appendChild(buildCard(ev, poolTeams, LIVE_STATES.has(s), FINAL_STATES.has(s)));
+    });
+    container.appendChild(todayBox);
+  }
+
+  // ── Results / Upcoming tabs ────────────────────────────────────────────────
+  if (results.length || upcoming.length) {
+    const tabBar = document.createElement("div");
+    tabBar.className = "matches-tab-bar";
+
+    const resultsBtn = document.createElement("button");
+    resultsBtn.className = "matches-tab active";
+    resultsBtn.textContent = `RESULTS (${results.length})`;
+
+    const upcomingBtn = document.createElement("button");
+    upcomingBtn.className = "matches-tab";
+    upcomingBtn.textContent = `UPCOMING (${upcoming.length})`;
+
+    tabBar.appendChild(resultsBtn);
+    tabBar.appendChild(upcomingBtn);
+    container.appendChild(tabBar);
+
+    const listEl = document.createElement("div");
+    listEl.className = "matches-tab-content";
+    container.appendChild(listEl);
+
+    function showTab(tab) {
+      resultsBtn.classList.toggle("active", tab === "results");
+      upcomingBtn.classList.toggle("active", tab === "upcoming");
+      listEl.innerHTML = "";
+      const items = tab === "results" ? results : upcoming;
+      if (!items.length) {
+        listEl.innerHTML = `<div class="empty-state"><p>No ${tab} yet.</p></div>`;
+        return;
+      }
+      items.forEach(ev => {
+        const s = ev.status?.type?.name || "STATUS_SCHEDULED";
+        listEl.appendChild(buildCard(ev, poolTeams, LIVE_STATES.has(s), FINAL_STATES.has(s)));
+      });
+    }
+
+    resultsBtn.addEventListener("click", () => showTab("results"));
+    upcomingBtn.addEventListener("click", () => showTab("upcoming"));
+
+    // Show results by default, or upcoming if no results
+    showTab(results.length ? "results" : "upcoming");
+  }
 
   const ts = document.createElement("p");
   ts.style.cssText = "color:var(--muted);font-size:11px;text-align:right;margin-top:12px;font-family:'IBM Plex Mono',monospace;";
   ts.textContent = `Updated ${new Date().toLocaleTimeString()}`;
   container.appendChild(ts);
-}
-
-// ─── Section header ───────────────────────────────────────────────────────────
-function sectionHeader(label, pulse = false) {
-  const el = document.createElement("div");
-  el.style.cssText = "display:flex;align-items:center;gap:8px;margin:18px 0 10px;";
-  if (pulse) { const dot = document.createElement("span"); dot.className = "live-dot"; el.appendChild(dot); }
-  const text = document.createElement("span");
-  text.style.cssText = "font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);white-space:nowrap;";
-  text.textContent = label;
-  el.appendChild(text);
-  const line = document.createElement("div");
-  line.style.cssText = "flex:1;height:1px;background:var(--border);";
-  el.appendChild(line);
-  return el;
 }
 
 // ─── Match card ───────────────────────────────────────────────────────────────
