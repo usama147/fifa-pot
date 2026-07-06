@@ -58,3 +58,12 @@ test('bindEvents joins events to match numbers by venue + date (±1 day)', () =>
   const names75 = m75.competitions[0].competitors.map(c => c.team.displayName).sort();
   assert.deepEqual(names75, ['Morocco', 'Netherlands']);
 });
+
+test('VENUE_ALIASES resolves renamed venues so all 32 matches bind', () => {
+  const idx = indexSkeleton(skeleton);
+  const bound = bindEvents(idx, espnEvents);
+
+  assert.equal(bound.size, 32);
+  // The four previously-unbound matches (Estadio Banorte / GEHA Field renames):
+  for (const n of [79, 87, 92, 100]) assert.ok(bound.has(n), `M${n} should bind`);
+});

@@ -19,7 +19,11 @@ export const ROUND_KEY = {
 
 // Extension point: map a normalized ESPN venue to a normalized skeleton venue
 // when the two sources name a stadium differently. Empty until needed.
-export const VENUE_ALIASES = {};
+export const VENUE_ALIASES = {
+  // ESPN renamed these venues vs the FIFA skeleton (data/knockout-bracket.json).
+  estadiobanorte: "estadioazteca",       // Estadio Banorte (ESPN) = Estadio Azteca (skeleton)
+  gehafieldatarrowhead: "arrowhead",     // GEHA Field at Arrowhead Stadium (ESPN) = Arrowhead Stadium (skeleton)
+};
 
 export function normalizeVenue(name) {
   const base = (name || "")
