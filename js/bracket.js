@@ -114,11 +114,24 @@ function renderViews(container, model, poolTeams) {
 }
 
 // ── Mobile list view ──────────────────────────────────────────────────────────
-function renderList(container, rounds, poolTeams) {
+function renderList(container, model, poolTeams) {
+  const order = model.order;
+  const numsByRound = {
+    r32:  [...(order.left?.r32 || []), ...(order.right?.r32 || [])],
+    r16:  [...(order.left?.r16 || []), ...(order.right?.r16 || [])],
+    qf:   [...(order.left?.qf  || []), ...(order.right?.qf  || [])],
+    sf:   [...(order.left?.sf  || []), ...(order.right?.sf  || [])],
+    third: [103],
+    final: [104],
+  };
+
   ROUND_ORDER.forEach(key => {
-    const events = rounds[key];
-    if (!events?.length) return;
-    const isLiveRound = events.some(ev => LIVE_STATES.has(ev.status?.type?.name || ""));
+    const matches = (numsByRound[key] || [])
+      .map(n => model.byNumber.get(n))
+      .filter(Boolean);
+    if (!matches.length) return;
+
+    const isLiveRound = matches.some(m => LIVE_STATES.has(m.status));
     const hdr = document.createElement("div");
     hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin:18px 0 10px;";
     if (isLiveRound) {
@@ -134,12 +147,15 @@ function renderList(container, rounds, poolTeams) {
     line.style.cssText = "flex:1;height:1px;background:var(--border);";
     hdr.appendChild(line);
     container.appendChild(hdr);
-    const live     = events.filter(ev => LIVE_STATES.has(ev.status?.type?.name || ""));
-    const done     = events.filter(ev => FINAL_STATES.has(ev.status?.type?.name || "")).sort((a, b) => new Date(b.date) - new Date(a.date));
-    const upcoming = events.filter(ev => !LIVE_STATES.has(ev.status?.type?.name || "") && !FINAL_STATES.has(ev.status?.type?.name || "")).sort((a, b) => new Date(a.date) - new Date(b.date));
-    [...live, ...done, ...upcoming].forEach(ev => {
-      const s = ev.status?.type?.name || "STATUS_SCHEDULED";
-      container.appendChild(buildCard(ev, poolTeams, LIVE_STATES.has(s), FINAL_STATES.has(s)));
+
+    // Bound matches render the rich ESPN card; unplayed slots use the bracket slot.
+    matches.forEach(m => {
+      if (m.event) {
+        const s = m.status;
+        container.appendChild(buildCard(m.event, poolTeams, LIVE_STATES.has(s), FINAL_STATES.has(s)));
+      } else {
+        container.appendChild(buildBracketSlot(m, poolTeams));
+      }
     });
   });
 }
@@ -380,18 +396,12 @@ function drawColConnectors(col, side) {
 }
 
 // ── Match detail modal ────────────────────────────────────────────────────────
-function showMatchModal(event, poolTeams) {
-  // Remove any existing modal
+function showMatchModal(match, poolTeams) {
   document.getElementById("bracket-modal")?.remove();
 
-  const comp  = event.competitions?.[0];
-  const comps = comp?.competitors || [];
-  const home  = comps.find(c => c.homeAway === "home");
-  const away  = comps.find(c => c.homeAway === "away");
-  const s     = event.status?.type?.name || "STATUS_SCHEDULED";
-  const isLive  = LIVE_STATES.has(s);
-  const isFinal = FINAL_STATES.has(s);
-  const venue   = comp?.venue;
+  const isLive  = LIVE_STATES.has(match.status);
+  const isFinal = FINAL_STATES.has(match.status);
+  const venue   = match.event?.competitions?.[0]?.venue;
 
   const overlay = document.createElement("div");
   overlay.id = "bracket-modal";
@@ -402,80 +412,74 @@ function showMatchModal(event, poolTeams) {
   panel.className = "bm-panel";
   panel.addEventListener("click", e => e.stopPropagation());
 
-  // Close button
   const closeBtn = document.createElement("button");
   closeBtn.className = "bm-close";
   closeBtn.innerHTML = "&#x2715;";
   closeBtn.addEventListener("click", () => overlay.remove());
   panel.appendChild(closeBtn);
 
-  // Round label
-  const roundKey = detectRound(event) || "other";
   const roundLbl = document.createElement("div");
   roundLbl.className = "bm-round";
-  roundLbl.textContent = ROUND_LABELS[roundKey] || roundKey.toUpperCase();
+  roundLbl.textContent = (ROUND_LABELS[match.round] || match.round.toUpperCase())
+    + ` · M${match.matchNumber}`;
   panel.appendChild(roundLbl);
 
-  // Status
   const statusEl = document.createElement("div");
   statusEl.className = "bm-status" + (isLive ? " bm-status--live" : "");
   if (isLive) {
-    statusEl.textContent = event.status?.displayClock ? `LIVE · ${event.status.displayClock}` : "LIVE";
+    const clock = match.event?.status?.displayClock;
+    statusEl.textContent = clock ? `LIVE · ${clock}` : "LIVE";
   } else if (isFinal) {
-    statusEl.textContent = bracketFinalLabel(event);
+    statusEl.textContent = bracketFinalLabel(match.event);
   } else {
-    const d = new Date(event.date);
+    const d = new Date(match.date);
     statusEl.textContent = d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })
       + " · " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
   panel.appendChild(statusEl);
 
-  // Teams
   const teamsEl = document.createElement("div");
   teamsEl.className = "bm-teams";
-
-  [home, away].forEach((c, idx) => {
+  [match.home, match.away].forEach((slot, idx) => {
     const teamEl = document.createElement("div");
-    teamEl.className = "bm-team" + (isFinal && c && (isFinal && (idx === 0 ? parseInt(home?.score) < parseInt(away?.score) : parseInt(away?.score) < parseInt(home?.score))) ? " bm-team--dim" : "");
+    teamEl.className = "bm-team" + (isFinal && !slot.isWinner ? " bm-team--dim" : "");
 
-    const logoUrl = c?.team?.logo || c?.team?.logos?.[0]?.href;
+    const logoUrl = slot.competitor?.team?.logo || slot.competitor?.team?.logos?.[0]?.href;
     if (logoUrl) {
       const img = document.createElement("img");
       img.className = "bm-flag";
-      img.src = logoUrl;
-      img.alt = "";
+      img.src = logoUrl; img.alt = "";
       teamEl.appendChild(img);
     }
 
     const nameEl = document.createElement("div");
     nameEl.className = "bm-team-name";
-    nameEl.textContent = c?.team?.displayName || "TBC";
+    nameEl.textContent = slot.competitor?.team?.displayName || slot.label;
     teamEl.appendChild(nameEl);
 
     if (isFinal || isLive) {
       const scoreEl = document.createElement("div");
       scoreEl.className = "bm-score";
-      scoreEl.textContent = c?.score ?? "–";
+      scoreEl.textContent = slot.score ?? "–";
       teamEl.appendChild(scoreEl);
     }
 
-    // Pool owners for this team
-    const owners = poolTeams.filter(pt => teamMatches(c?.team?.displayName || "", pt.team.name));
-    if (owners.length) {
-      const ownersEl = document.createElement("div");
-      ownersEl.className = "bm-owners";
-      owners.forEach(pt => {
-        const tag = document.createElement("span");
-        tag.className = `bm-owner-tag ${pt.tierKey}`;
-        tag.textContent = pt.participantName;
-        ownersEl.appendChild(tag);
-      });
-      teamEl.appendChild(ownersEl);
+    if (slot.teamName) {
+      const owners = poolTeams.filter(pt => teamMatches(slot.teamName, pt.team.name));
+      if (owners.length) {
+        const ownersEl = document.createElement("div");
+        ownersEl.className = "bm-owners";
+        owners.forEach(pt => {
+          const tag = document.createElement("span");
+          tag.className = `bm-owner-tag ${pt.tierKey}`;
+          tag.textContent = pt.participantName;
+          ownersEl.appendChild(tag);
+        });
+        teamEl.appendChild(ownersEl);
+      }
     }
 
     teamsEl.appendChild(teamEl);
-
-    // VS divider
     if (idx === 0) {
       const vs = document.createElement("div");
       vs.className = "bm-vs";
@@ -483,10 +487,8 @@ function showMatchModal(event, poolTeams) {
       teamsEl.appendChild(vs);
     }
   });
-
   panel.appendChild(teamsEl);
 
-  // Venue
   if (venue?.fullName) {
     const venueEl = document.createElement("div");
     venueEl.className = "bm-venue";
@@ -495,14 +497,11 @@ function showMatchModal(event, poolTeams) {
     panel.appendChild(venueEl);
   }
 
-  // Keyboard close
   const onKey = e => { if (e.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", onKey); } };
   document.addEventListener("keydown", onKey);
 
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
-
-  // Entrance animation
   gsap.from(panel, { duration: 0.25, opacity: 0, y: 20, ease: "power3.out" });
 }
 
