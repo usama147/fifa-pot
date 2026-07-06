@@ -110,3 +110,85 @@ export function bindEvents(index, espnEvents) {
   }
   return bound;
 }
+
+export function outcome(matchNumber, bound) {
+  const ev = bound.get(matchNumber);
+  if (!ev || !FINAL_STATES.has(ev.status?.type?.name || "")) {
+    return { winner: null, loser: null };
+  }
+  const comps = ev.competitions?.[0]?.competitors || [];
+  const w = comps.find(c => c.winner === true);
+  const l = comps.find(c => c.winner === false);
+  return {
+    winner: w?.team?.displayName || null,
+    loser: l?.team?.displayName || null,
+  };
+}
+
+// Resolve a slot definition string to a display label + (maybe) a real team.
+// One level only: an unplayed feed shows "Winner M<n>" rather than recursing.
+export function resolveDef(defString, bound) {
+  const s = defString || "";
+  const win = s.match(/winner match (\d+)/i);
+  const los = s.match(/loser match (\d+)/i);
+  if (win || los) {
+    const num = parseInt((win || los)[1], 10);
+    const o = outcome(num, bound);
+    const name = win ? o.winner : o.loser;
+    if (name) return { label: name, teamName: name, resolved: true };
+    return { label: `${win ? "Winner" : "Loser"} M${num}`, teamName: null, resolved: false };
+  }
+  // Group placeholder (e.g. "Group E winners") — passes through untouched.
+  return { label: s, teamName: null, resolved: false };
+}
+
+function slotFromCompetitor(c) {
+  return {
+    label: c?.team?.displayName || "TBC",
+    teamName: c?.team?.displayName || null,
+    competitor: c || null,
+    score: c?.score ?? null,
+    isWinner: c?.winner === true,
+    resolved: !!c?.team?.displayName,
+  };
+}
+
+function slotFromDef(defString, bound) {
+  const r = resolveDef(defString, bound);
+  return {
+    label: r.label,
+    teamName: r.teamName,
+    competitor: null,
+    score: null,
+    isWinner: false,
+    resolved: r.resolved,
+  };
+}
+
+export function buildModel(skeleton, espnEvents) {
+  const index = indexSkeleton(skeleton);
+  const bound = bindEvents(index, espnEvents);
+  const byNumber = new Map();
+
+  for (const [num, def] of index.byNumber) {
+    const ev = bound.get(num) || null;
+    const isFinal = FINAL_STATES.has(ev?.status?.type?.name || "");
+    const comps = ev?.competitions?.[0]?.competitors || [];
+    const home = comps.find(c => c.homeAway === "home");
+    const away = comps.find(c => c.homeAway === "away");
+
+    byNumber.set(num, {
+      matchNumber: num,
+      round: def.round,
+      stadium: def.stadium,
+      hostCity: def.hostCity,
+      date: ev?.date || def.date,
+      feedsInto: def.feedsInto,
+      status: ev?.status?.type?.name || "STATUS_SCHEDULED",
+      event: ev,
+      home: isFinal && home ? slotFromCompetitor(home) : slotFromDef(def.homeDef, bound),
+      away: isFinal && away ? slotFromCompetitor(away) : slotFromDef(def.awayDef, bound),
+    });
+  }
+  return { order: skeleton.bracketOrder, byNumber };
+}
