@@ -1,242 +1,18 @@
-// js/bracket.js
-import { db, teamMatches } from "./config.js";
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import { ESPN_BASE, LIVE_STATES, FINAL_STATES, buildCard } from "./matches.js";
+// js/bracket.js — renders the knockout bracket from the fixed skeleton model.
+import { teamMatches } from "./config.js";
+import { LIVE_STATES, FINAL_STATES, buildCard } from "./matches.js";
+import { buildModel, loadSkeleton } from "./bracket-model.js";
 
-// ── Round config ───────────────────────────────────────────────────────────────
-const ROUND_ORDER  = ["r32", "r16", "qf", "sf", "third", "final", "other"];
+const ROUND_ORDER  = ["r32", "r16", "qf", "sf", "third", "final"];
 const ROUND_LABELS = {
-  r32:   "ROUND OF 32",
-  r16:   "ROUND OF 16",
-  qf:    "QUARTER-FINALS",
-  sf:    "SEMI-FINALS",
-  third: "THIRD PLACE",
-  final: "FINAL",
-  other: "OTHER",
+  r32: "ROUND OF 32", r16: "ROUND OF 16", qf: "QUARTER-FINALS",
+  sf: "SEMI-FINALS", third: "THIRD PLACE", final: "FINAL",
 };
 
-// ── Round detection ────────────────────────────────────────────────────────────
-function detectRound(event) {
-  // Prefer ESPN's season.slug — the most reliable round indicator
-  const slug = (event.season?.slug || "").toLowerCase();
-  if (slug.includes("round-of-32"))    return "r32";
-  if (slug.includes("round-of-16"))    return "r16";
-  if (/quarterfinal/i.test(slug))      return "qf";
-  if (/semifinal/i.test(slug))         return "sf";
-  if (/3rd-place|third.?place/i.test(slug)) return "third";
-  if (/\bfinal\b/i.test(slug))        return "final";
+// ── Pool teams (Firestore) ──────────────────────────────────────────────────
+import { db } from "./config.js";
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-  // Fallback: check notes headlines
-  const notes = event.competitions?.[0]?.notes || [];
-  for (const note of notes) {
-    const t = (note.headline || note.type?.text || "").toLowerCase().trim();
-    if (!t) continue;
-    if (/group/i.test(t))            return null;
-    if (/round of 32/i.test(t))      return "r32";
-    if (/round of 16/i.test(t))      return "r16";
-    if (/quarter.?final/i.test(t))   return "qf";
-    if (/semi.?final/i.test(t))      return "sf";
-    if (/third.?place/i.test(t))     return "third";
-    if (/\bfinal\b/i.test(t))        return "final";
-  }
-
-  // Fallback: infer from event name references
-  const d    = new Date(event.date || "");
-  const name = event.name || "";
-  if (d < new Date("2026-06-28T00:00:00Z")) return null;
-  if (/round of 32.+winner|winner.+round of 32/i.test(name)) return "r16";
-  if (/round of 16.+winner|winner.+round of 16/i.test(name)) return "qf";
-  if (/quarter.?final.+winner|winner.+quarter.?final/i.test(name)) return "sf";
-  if (/semi.?final.+winner|winner.+semi.?final/i.test(name)) return "final";
-
-  // Last resort: date-based detection
-  if (d <= new Date("2026-07-05T23:59:59Z")) return "r32";
-  if (d <= new Date("2026-07-10T23:59:59Z")) return "r16";
-  if (d <= new Date("2026-07-13T23:59:59Z")) return "qf";
-  if (d <= new Date("2026-07-16T23:59:59Z")) return "sf";
-  if (d <= new Date("2026-07-19T23:59:59Z")) return "third";
-  return "final";
-}
-
-// ── Hardcoded bracket slot order (FIFA WC2026 published bracket) ─────────────
-// ESPN API has no bracket-position field, and ESPN event IDs don't match FIFA's
-// bracket order — so we hardcode the visual top-to-bottom order per half.
-// Each entry = name fragments that identify the teams in one R32 match.
-const R32_L = [
-  ["germany","paraguay"],                                         // M74  slot 0  ─┐ R16_2 (M89)
-  ["france","sweden"],                                            // M77  slot 1  ─┘
-  ["south africa","canada"],                                      // M73  slot 2  ─┐ R16_1 (M90)
-  ["netherlands","morocco"],                                      // M75  slot 3  ─┘
-  ["portugal","croatia"],                                         // M83  slot 4  ─┐ R16_5 (M93)
-  ["spain","austria"],                                            // M84  slot 5  ─┘
-  ["united states","bosnia","herze"],                             // M81  slot 6  ─┐ R16_6 (M94)
-  ["england","congo"],                                            // M80  slot 7  ─┘
-];
-const R32_R = [
-  ["brazil","japan"],                                             // M76  slot 0  ─┐ R16_3 (M91)
-  ["ivory coast","côte","cote","norway"],                         // M78  slot 1  ─┘
-  ["mexico","ecuador"],                                           // M79  slot 2  ─┐ R16_4 (M92)
-  ["belgium","senegal"],                                          // M82  slot 3  ─┘
-  ["switzerland","algeria"],                                      // M85  slot 4  ─┐ R16_7 (M95)
-  ["argentina","cape verde"],                                     // M86  slot 5  ─┘
-  ["australia","egypt"],                                          // M88  slot 6  ─┐ R16_8 (M96)
-  ["colombia","ghana"],                                           // M87  slot 7  ─┘
-];
-
-// FIFA match numbers per bracket half (top-to-bottom visual order)
-// Source: thestatsapi.com/world-cup/data
-const MATCH_NUMS_L = {
-  r32: [74, 77, 73, 75, 83, 84, 81, 80],
-  r16: [89, 90, 93, 94],
-  qf:  [97, 98],
-  sf:  [101],
-};
-const MATCH_NUMS_R = {
-  r32: [76, 78, 79, 82, 85, 86, 88, 87],
-  r16: [91, 92, 95, 96],
-  qf:  [99, 100],
-  sf:  [102],
-};
-const MATCH_NUMS_CENTER = { final: 104, third: 103 };
-
-// Match a team display-name against a slot's name fragments
-function nameHitsSlot(displayName, slotFrags) {
-  const n = displayName.toLowerCase();
-  return slotFrags.some(f => n.includes(f));
-}
-
-// Recursively resolve event name references to actual team names.
-// Handles the full chain: "Quarterfinal N" → R16 event → "Round of 32 M" → R32 event → teams.
-// ESPN uses 1-indexed numbering by event ID order within each round.
-const REF_PATTERNS = [
-  { re: /round of 32 (\d+)/gi,  key: "r32" },
-  { re: /round of 16 (\d+)/gi,  key: "r16" },
-  { re: /quarterfinal (\d+)/gi, key: "qf"  },
-  { re: /semifinal (\d+)/gi,    key: "sf"  },
-];
-
-function resolveEventTeams(evName, roundsSorted, visited) {
-  if (!visited) visited = new Set();
-  const teams = [];
-
-  for (const { re, key } of REF_PATTERNS) {
-    const sorted = roundsSorted[key];
-    if (!sorted?.length) continue;
-    // Reset regex lastIndex for each pass
-    const regex = new RegExp(re.source, re.flags);
-    for (const m of evName.matchAll(regex)) {
-      const n = parseInt(m[1]) - 1; // 1-indexed → 0-indexed
-      if (n < 0 || n >= sorted.length) continue;
-      const refEv = sorted[n];
-      if (visited.has(refEv.id)) continue; // prevent cycles
-      visited.add(refEv.id);
-
-      // Get direct team names (skip placeholder names like "Round of 32 3 Winner")
-      const comps = refEv.competitions?.[0]?.competitors || [];
-      const direct = comps
-        .map(c => c.team?.displayName || "")
-        .filter(n => n && !/winner|loser|round of|quarterfinal|semifinal/i.test(n));
-
-      if (direct.length) {
-        teams.push(...direct);
-      } else {
-        // Recurse: resolve this event's name to get teams from earlier rounds
-        teams.push(...resolveEventTeams(
-          (refEv.name || "").toLowerCase(), roundsSorted, visited
-        ));
-      }
-    }
-  }
-  return teams;
-}
-
-// Check if an event (or its resolved refs) hits a slot list. Returns true/false.
-function eventHitsSide(ev, slotList, roundsSorted) {
-  const comps  = ev.competitions?.[0]?.competitors || [];
-  const evName = (ev.name || "").toLowerCase();
-  // Direct team name match
-  if (comps.some(c => slotList.some(frags => nameHitsSlot(c.team?.displayName || "", frags)))) return true;
-  if (slotList.some(frags => frags.some(f => evName.includes(f)))) return true;
-  // Resolve round references recursively (QF → R16 → R32 → teams)
-  const refTeams = resolveEventTeams(evName, roundsSorted);
-  if (refTeams.some(t => slotList.some(frags => nameHitsSlot(t, frags)))) return true;
-  return false;
-}
-
-// Return R32 slot index (0-7) for an event in a given half, or -1 if unknown
-function r32SlotOf(ev, slotList) {
-  const comps  = ev.competitions?.[0]?.competitors || [];
-  const evName = (ev.name || "").toLowerCase();
-  for (let i = 0; i < slotList.length; i++) {
-    const frags = slotList[i];
-    const hit   = comps.some(c => nameHitsSlot(c.team?.displayName || "", frags))
-                || frags.some(f => evName.includes(f));
-    if (hit) return i;
-  }
-  return -1;
-}
-
-// For R16/QF/SF: trace any known team back to their R32 slot → derive position.
-// Recursively resolves round refs for unresolved events (QF → R16 → R32 → teams).
-function traceSlot(ev, slotList, depth, roundsSorted) {
-  const comps  = ev.competitions?.[0]?.competitors || [];
-  const evName = (ev.name || "").toLowerCase();
-  // Direct team name match
-  for (const c of comps) {
-    const name = c.team?.displayName || "";
-    if (!name) continue;
-    for (let i = 0; i < slotList.length; i++) {
-      if (nameHitsSlot(name, slotList[i])) return Math.floor(i / depth);
-    }
-  }
-  // Event name team fragment match
-  for (let i = 0; i < slotList.length; i++) {
-    if (slotList[i].some(f => evName.includes(f))) return Math.floor(i / depth);
-  }
-  // Resolve round references recursively to actual team names
-  const refTeams = resolveEventTeams(evName, roundsSorted);
-  for (const t of refTeams) {
-    for (let i = 0; i < slotList.length; i++) {
-      if (nameHitsSlot(t, slotList[i])) return Math.floor(i / depth);
-    }
-  }
-  return -1;
-}
-
-// Sort events into correct bracket positions within a half.
-// Uses slot-filling: place events with known positions first, then fill gaps.
-function splitAndOrder(events, slotList, round, roundsSorted) {
-  const depth = { r32: 1, r16: 2, qf: 4, sf: 8 }[round] ?? 1;
-  const expectedSlots = Math.ceil(8 / depth); // 8, 4, 2, 1
-
-  const placed   = new Array(expectedSlots).fill(null);
-  const unplaced = [];
-
-  events.forEach(ev => {
-    const idx = round === "r32" ? r32SlotOf(ev, slotList)
-                                : traceSlot(ev, slotList, depth, roundsSorted);
-    if (idx >= 0 && idx < expectedSlots && placed[idx] === null) {
-      placed[idx] = ev;
-    } else {
-      unplaced.push(ev);
-    }
-  });
-
-  // Fill empty slots with unplaced events (sorted by ESPN ID for consistency)
-  unplaced.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-  let ui = 0;
-  const result = [];
-  for (let i = 0; i < expectedSlots; i++) {
-    if (placed[i])              result.push(placed[i]);
-    else if (ui < unplaced.length) result.push(unplaced[ui++]);
-  }
-  // Append any remaining
-  while (ui < unplaced.length) result.push(unplaced[ui++]);
-
-  return result;
-}
-
-// ── Pool teams ─────────────────────────────────────────────────────────────────
 async function loadPoolTeams() {
   try {
     const snap = await getDocs(collection(db, "pool", "main", "participants"));
@@ -252,44 +28,40 @@ async function loadPoolTeams() {
   } catch { return []; }
 }
 
-// ── Fetch + bucket by round ────────────────────────────────────────────────────
-async function fetchRounds() {
-  const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, "");
-  const res  = await fetch(`${ESPN_BASE}?dates=${fmt(new Date("2026-06-28"))}-${fmt(new Date("2026-07-21"))}`);
-  const data = await res.json();
-  const rounds = {};
-  (data.events || []).forEach(ev => {
-    const key = detectRound(ev);
-    if (!key) return;
-    if (!rounds[key]) rounds[key] = [];
-    rounds[key].push(ev);
-  });
-  return rounds;
-}
-
-// ── Main entry ─────────────────────────────────────────────────────────────────
+// ── Main entry ──────────────────────────────────────────────────────────────
 let pollTimer = null;
 
 export async function renderBracket(container) {
   container.innerHTML = `<div class="loading">Loading bracket...</div>`;
+  let skeleton;
+  try {
+    skeleton = await loadSkeleton();
+  } catch (err) {
+    console.error("Bracket skeleton load error:", err);
+    container.innerHTML = `
+      <div class="empty-state"><p>Could not load bracket structure.</p></div>`;
+    return;
+  }
   const poolTeams = await loadPoolTeams();
-  await fetchAndRender(container, poolTeams);
+  await fetchAndRender(container, poolTeams, skeleton);
   if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(() => fetchAndRender(container, poolTeams), 60000);
+  pollTimer = setInterval(() => fetchAndRender(container, poolTeams, skeleton), 60000);
 }
 
-async function fetchAndRender(container, poolTeams) {
+async function fetchAndRender(container, poolTeams, skeleton) {
+  let events = [];
   try {
-    const rounds = await fetchRounds();
-    renderViews(container, rounds, poolTeams);
+    const start = "20260628";
+    const end   = "20260720";
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${start}-${end}`
+    );
+    events = (await res.json()).events || [];
   } catch (err) {
-    console.error("Bracket fetch error:", err);
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>Could not load bracket data.</p>
-        <p style="font-size:12px;margin-top:8px;">Scores will appear as matches are played.</p>
-      </div>`;
+    console.warn("Bracket ESPN fetch failed — rendering skeleton only:", err);
   }
+  const model = buildModel(skeleton, events);
+  renderViews(container, model, poolTeams);
 }
 
 function renderViews(container, rounds, poolTeams) {

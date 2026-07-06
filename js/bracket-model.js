@@ -201,3 +201,10 @@ export function buildModel(skeleton, espnEvents) {
   }
   return { order: skeleton.bracketOrder, byNumber };
 }
+
+// Browser-only: fetch the skeleton JSON. Not exercised by node tests.
+export async function loadSkeleton() {
+  const res = await fetch("./data/knockout-bracket.json");
+  if (!res.ok) throw new Error(`skeleton load failed: ${res.status}`);
+  return res.json();
+}
