@@ -118,3 +118,16 @@ test('buildModel is deterministic — identical output on repeat (drift guard)',
   const b = project(buildModel(skeleton, espnEvents));
   assert.deepEqual(a, b);
 });
+
+test('buildModel shows real teams for LIVE matches, not placeholders', () => {
+  // Simulate M74 (Germany v Paraguay) being in progress rather than final.
+  const live = JSON.parse(JSON.stringify(espnEvents));
+  const m74ev = live.find(e => (e.name || '').includes('Paraguay') && (e.name || '').includes('Germany'));
+  assert.ok(m74ev, 'fixture should contain the Germany-Paraguay match');
+  m74ev.status.type.name = 'STATUS_IN_PROGRESS';
+
+  const m74 = buildModel(skeleton, live).byNumber.get(74);
+  assert.equal(m74.status, 'STATUS_IN_PROGRESS');
+  assert.deepEqual([m74.home.teamName, m74.away.teamName].sort(), ['Germany', 'Paraguay']);
+  assert.ok(m74.home.resolved && m74.away.resolved, 'live match must show real resolved teams');
+});

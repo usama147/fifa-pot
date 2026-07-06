@@ -165,6 +165,16 @@ function slotFromDef(defString, bound) {
   };
 }
 
+// ESPN supplies placeholder competitors for unplayed matches (e.g.
+// "Semifinal 1 Winner", "Round of 16 7 Winner"). Treat those as NOT-a-real-team
+// so we fall back to the skeleton's own feed/group placeholder resolution.
+const PLACEHOLDER_TEAM_RE = /winner|loser|runner|round of|semifinal|quarterfinal|third place|\bgroup [a-l]\b/i;
+
+function isRealTeam(competitor) {
+  const name = competitor?.team?.displayName || "";
+  return !!name && !PLACEHOLDER_TEAM_RE.test(name);
+}
+
 export function buildModel(skeleton, espnEvents) {
   const index = indexSkeleton(skeleton);
   const bound = bindEvents(index, espnEvents);
@@ -172,7 +182,6 @@ export function buildModel(skeleton, espnEvents) {
 
   for (const [num, def] of index.byNumber) {
     const ev = bound.get(num) || null;
-    const isFinal = FINAL_STATES.has(ev?.status?.type?.name || "");
     const comps = ev?.competitions?.[0]?.competitors || [];
     const home = comps.find(c => c.homeAway === "home");
     const away = comps.find(c => c.homeAway === "away");
@@ -186,8 +195,8 @@ export function buildModel(skeleton, espnEvents) {
       feedsInto: def.feedsInto,
       status: ev?.status?.type?.name || "STATUS_SCHEDULED",
       event: ev,
-      home: isFinal && home ? slotFromCompetitor(home) : slotFromDef(def.homeDef, bound),
-      away: isFinal && away ? slotFromCompetitor(away) : slotFromDef(def.awayDef, bound),
+      home: home && isRealTeam(home) ? slotFromCompetitor(home) : slotFromDef(def.homeDef, bound),
+      away: away && isRealTeam(away) ? slotFromCompetitor(away) : slotFromDef(def.awayDef, bound),
     });
   }
   return { order: skeleton.bracketOrder, byNumber };
