@@ -63,3 +63,46 @@ export function indexSkeleton(skeleton) {
   }
   return { byNumber, venueIndex };
 }
+
+const KNOCKOUT_SLUGS = [
+  "round-of-32", "round-of-16", "quarterfinals", "quarter-finals",
+  "semifinals", "semi-finals", "third-place", "3rd-place", "final",
+];
+const DAY = 86400000;
+
+export function isKnockoutEvent(ev) {
+  const slug = (ev.season?.slug || "").toLowerCase();
+  return KNOCKOUT_SLUGS.some(k => slug.includes(k));
+}
+
+// Join each ESPN knockout event to its FIFA match number.
+// Key: identical normalized venue AND kickoff within ±1 calendar day
+// (ESPN timestamps are UTC, so a North-American evening match can roll to the
+// next UTC day). Venue + a 1-day window is unique across the whole bracket.
+export function bindEvents(index, espnEvents) {
+  const bound = new Map();
+  for (const ev of espnEvents) {
+    if (!isKnockoutEvent(ev)) continue;
+    const venue = normalizeVenue(ev.competitions?.[0]?.venue?.fullName || "");
+    const evDay = dayMs(ev.date || "");
+    let best = null;
+    let bestDiff = Infinity;
+    for (const cand of index.venueIndex) {
+      if (cand.venue !== venue) continue;
+      const diff = Math.abs(cand.dayMs - evDay);
+      if (diff <= DAY && diff < bestDiff && !bound.has(cand.num)) {
+        best = cand;
+        bestDiff = diff;
+      }
+    }
+    if (best) {
+      bound.set(best.num, ev);
+    } else {
+      console.warn(
+        `Unbound knockout event: ${ev.name || "?"} @ ` +
+        `${ev.competitions?.[0]?.venue?.fullName || "?"} ${ev.date || "?"}`
+      );
+    }
+  }
+  return bound;
+}
