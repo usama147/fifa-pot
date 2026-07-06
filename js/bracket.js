@@ -64,27 +64,21 @@ async function fetchAndRender(container, poolTeams, skeleton) {
   renderViews(container, model, poolTeams);
 }
 
-function renderViews(container, rounds, poolTeams) {
+function renderViews(container, model, poolTeams) {
   container.innerHTML = "";
-  const hasAny = ROUND_ORDER.some(k => rounds[k]?.length);
-  if (!hasAny) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>Knockout stage hasn't started yet.</p>
-        <p style="font-size:12px;margin-top:8px;">Check back once the group stage is complete.</p>
-      </div>`;
-    return;
-  }
+  const anyPlayed = [...model.byNumber.values()].some(
+    m => LIVE_STATES.has(m.status) || FINAL_STATES.has(m.status)
+  );
 
-  // Mobile list view
+  // Mobile list
   const listEl = document.createElement("div");
   listEl.className = "bracket-list";
-  renderList(listEl, rounds, poolTeams);
+  renderList(listEl, model, poolTeams);
   container.appendChild(listEl);
 
-  // Top scrollbar rail (desktop only via CSS)
-  const scrollTop      = document.createElement("div");
-  scrollTop.className  = "bracket-scroll-top";
+  // Top scrollbar rail
+  const scrollTop = document.createElement("div");
+  scrollTop.className = "bracket-scroll-top";
   const scrollTopInner = document.createElement("div");
   scrollTopInner.className = "bracket-scroll-top-inner";
   scrollTop.appendChild(scrollTopInner);
@@ -93,30 +87,29 @@ function renderViews(container, rounds, poolTeams) {
   // Desktop tree
   const treeEl = document.createElement("div");
   treeEl.className = "bracket-tree";
-  const wrapper = renderTree(rounds, poolTeams);
+  const wrapper = renderTree(model, poolTeams);
   treeEl.appendChild(wrapper);
   container.appendChild(treeEl);
 
-  // Sync scroll + draw connectors after layout
   requestAnimationFrame(() => {
     scrollTopInner.style.width = wrapper.scrollWidth + "px";
     let syncing = false;
     scrollTop.addEventListener("scroll", () => {
       if (syncing) return; syncing = true;
-      treeEl.scrollLeft = scrollTop.scrollLeft;
-      syncing = false;
+      treeEl.scrollLeft = scrollTop.scrollLeft; syncing = false;
     });
     treeEl.addEventListener("scroll", () => {
       if (syncing) return; syncing = true;
-      scrollTop.scrollLeft = treeEl.scrollLeft;
-      syncing = false;
+      scrollTop.scrollLeft = treeEl.scrollLeft; syncing = false;
     });
     drawConnectors(wrapper);
   });
 
   const ts = document.createElement("p");
   ts.className = "bracket-timestamp";
-  ts.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  ts.textContent = anyPlayed
+    ? `Updated ${new Date().toLocaleTimeString()}`
+    : `Knockout stage starts 28 June · Updated ${new Date().toLocaleTimeString()}`;
   container.appendChild(ts);
 }
 
@@ -152,78 +145,40 @@ function renderList(container, rounds, poolTeams) {
 }
 
 // ── Desktop tree view ─────────────────────────────────────────────────────────
-function renderTree(rounds, poolTeams) {
-  const left  = {};
-  const right = {};
-  const center = {};
-
-  // All rounds sorted by ESPN ID — used to recursively resolve event name refs.
-  // Chain: "Quarterfinal N" → R16 event → "Round of 32 M" → R32 event → teams.
-  const roundsSorted = {};
-  ["r32", "r16", "qf", "sf"].forEach(key => {
-    if (rounds[key]?.length) {
-      roundsSorted[key] = [...rounds[key]].sort((a, b) => parseInt(a.id) - parseInt(b.id));
-    }
-  });
-
-  ["r32", "r16", "qf", "sf"].forEach(key => {
-    if (!rounds[key]?.length) return;
-    const allEvents = rounds[key];
-
-    // Separate events into left/right by matching team names to R32 slot pools.
-    // For unresolved events, recursively resolves round refs to actual team names.
-    const leftEvs  = [];
-    const rightEvs = [];
-    const neither  = [];
-    allEvents.forEach(ev => {
-      const hitsL = eventHitsSide(ev, R32_L, roundsSorted);
-      const hitsR = eventHitsSide(ev, R32_R, roundsSorted);
-      if (hitsL && !hitsR)       leftEvs.push(ev);
-      else if (hitsR && !hitsL) rightEvs.push(ev);
-      else                       neither.push(ev);
-    });
-    // Balance unknowns
-    neither.forEach(ev => {
-      (leftEvs.length <= rightEvs.length ? leftEvs : rightEvs).push(ev);
-    });
-
-    left[key]  = splitAndOrder(leftEvs,  R32_L, key, roundsSorted);
-    right[key] = splitAndOrder(rightEvs, R32_R, key, roundsSorted);
-  });
-
-  if (rounds.final) center.final = rounds.final;
-  if (rounds.third) center.third = rounds.third;
-
-  // DOM
+function renderTree(model, poolTeams) {
   const wrapper = document.createElement("div");
   wrapper.className = "bracket-wrapper";
+  const get = n => model.byNumber.get(n);
 
   // Left half: R32 → R16 → QF → SF
   const leftEl = document.createElement("div");
   leftEl.className = "bracket-half bracket-half-left";
   ["r32", "r16", "qf", "sf"].forEach(key => {
-    if (!left[key]?.length) return;
-    leftEl.appendChild(buildBracketColumn(key, left[key], poolTeams, MATCH_NUMS_L[key]));
+    const nums = model.order.left?.[key] || [];
+    if (!nums.length) return;
+    leftEl.appendChild(buildBracketColumn(key, nums.map(get), poolTeams));
   });
   wrapper.appendChild(leftEl);
 
-  // Center
-  if (center.final?.length || center.third?.length) {
+  // Center: Final + Third place
+  const finalM = get(104);
+  const thirdM = get(103);
+  if (finalM || thirdM) {
     const centerEl = document.createElement("div");
     centerEl.className = "bracket-center";
-    if (center.final?.length) {
+    if (finalM) {
       const lbl = document.createElement("div");
       lbl.className = "bracket-center-label";
       lbl.textContent = "FINAL";
       centerEl.appendChild(lbl);
-      center.final.forEach(ev => centerEl.appendChild(buildBracketSlot(ev, poolTeams, MATCH_NUMS_CENTER.final)));
+      centerEl.appendChild(buildBracketSlot(finalM, poolTeams));
     }
-    if (center.third?.length) {
+    if (thirdM) {
       const lbl = document.createElement("div");
       lbl.className = "bracket-center-label bracket-center-label-third";
       lbl.textContent = "3RD PLACE";
       centerEl.appendChild(lbl);
-      center.third.forEach(ev => centerEl.appendChild(buildBracketSlot(ev, poolTeams, MATCH_NUMS_CENTER.third)));
+      centerEl.appendChild(buildBracketSlot(thirdM, poolTeams));
     }
     wrapper.appendChild(centerEl);
   }
@@ -232,8 +187,9 @@ function renderTree(rounds, poolTeams) {
   const rightEl = document.createElement("div");
   rightEl.className = "bracket-half bracket-half-right";
   ["sf", "qf", "r16", "r32"].forEach(key => {
-    if (!right[key]?.length) return;
-    rightEl.appendChild(buildBracketColumn(key, right[key], poolTeams, MATCH_NUMS_R[key]));
+    const nums = model.order.right?.[key] || [];
+    if (!nums.length) return;
+    rightEl.appendChild(buildBracketColumn(key, nums.map(get), poolTeams));
   });
   wrapper.appendChild(rightEl);
 
@@ -241,7 +197,7 @@ function renderTree(rounds, poolTeams) {
 }
 
 // ── Column builder ────────────────────────────────────────────────────────────
-function buildBracketColumn(key, events, poolTeams, matchNums) {
+function buildBracketColumn(key, matches, poolTeams) {
   const col = document.createElement("div");
   col.className = "bracket-col";
   col.dataset.round = key;
@@ -253,55 +209,41 @@ function buildBracketColumn(key, events, poolTeams, matchNums) {
 
   const slots = document.createElement("div");
   slots.className = "bracket-slots";
-
-  // Pair slots for connector lines (slots 0+1, 2+3, …)
-  for (let i = 0; i < events.length; i += 2) {
+  for (let i = 0; i < matches.length; i += 2) {
     const pair = document.createElement("div");
     pair.className = "bracket-pair";
-    pair.appendChild(buildBracketSlot(events[i], poolTeams, matchNums?.[i]));
-    if (events[i + 1]) pair.appendChild(buildBracketSlot(events[i + 1], poolTeams, matchNums?.[i + 1]));
+    if (matches[i])     pair.appendChild(buildBracketSlot(matches[i], poolTeams));
+    if (matches[i + 1]) pair.appendChild(buildBracketSlot(matches[i + 1], poolTeams));
     slots.appendChild(pair);
   }
-
   col.appendChild(slots);
   return col;
 }
 
 // ── Slot builder ──────────────────────────────────────────────────────────────
-function buildBracketSlot(event, poolTeams, matchNum) {
-  const comp  = event.competitions?.[0];
-  const comps = comp?.competitors || [];
-  const home  = comps.find(c => c.homeAway === "home");
-  const away  = comps.find(c => c.homeAway === "away");
-  const s     = event.status?.type?.name || "STATUS_SCHEDULED";
-  const isLive  = LIVE_STATES.has(s);
-  const isFinal = FINAL_STATES.has(s);
-
-  const homeScore = parseInt(home?.score ?? 0, 10);
-  const awayScore = parseInt(away?.score ?? 0, 10);
-  const homeWon   = isFinal && homeScore > awayScore;
-  const awayWon   = isFinal && awayScore > homeScore;
-
-  const homePool = poolTeams.filter(pt => teamMatches(home?.team?.displayName || "", pt.team.name));
-  const awayPool = poolTeams.filter(pt => teamMatches(away?.team?.displayName || "", pt.team.name));
+function buildBracketSlot(match, poolTeams) {
+  const isLive  = LIVE_STATES.has(match.status);
+  const isFinal = FINAL_STATES.has(match.status);
 
   const slot = document.createElement("div");
   slot.className = "bracket-slot";
 
   const card = document.createElement("div");
-  card.className = "bracket-match" + (isFinal ? " bracket-match--played" : "") + (isLive ? " bracket-match--live" : "");
+  card.className = "bracket-match"
+    + (isFinal ? " bracket-match--played" : "")
+    + (isLive ? " bracket-match--live" : "");
 
-  // Status line with match number
   const statusEl = document.createElement("div");
   statusEl.className = "bracket-match-status";
-  const matchLabel = matchNum ? `M${matchNum} · ` : "";
+  const matchLabel = `M${match.matchNumber} · `;
   if (isLive) {
-    statusEl.textContent = event.status?.displayClock ? `${matchLabel}LIVE · ${event.status.displayClock}` : `${matchLabel}LIVE`;
+    const clock = match.event?.status?.displayClock;
+    statusEl.textContent = clock ? `${matchLabel}LIVE · ${clock}` : `${matchLabel}LIVE`;
     statusEl.style.color = "var(--green)";
   } else if (isFinal) {
-    statusEl.textContent = matchLabel + bracketFinalLabel(event);
+    statusEl.textContent = matchLabel + bracketFinalLabel(match.event);
   } else {
-    statusEl.textContent = matchLabel + bracketKickoff(event.date);
+    statusEl.textContent = matchLabel + bracketKickoff(match.date);
   }
   card.appendChild(statusEl);
 
@@ -309,32 +251,29 @@ function buildBracketSlot(event, poolTeams, matchNum) {
   divider.className = "bracket-divider";
   card.appendChild(divider);
 
-  card.appendChild(buildBracketTeamRow(home, isFinal && !homeWon, isFinal || isLive));
-  homePool.forEach(pt => card.appendChild(buildBracketOwnerTag(pt)));
-  card.appendChild(buildBracketTeamRow(away, isFinal && !awayWon, isFinal || isLive));
-  awayPool.forEach(pt => card.appendChild(buildBracketOwnerTag(pt)));
+  // A slot's own played state dims the loser; live/final shows scores.
+  card.appendChild(buildBracketTeamRow(match.home, isFinal && !match.home.isWinner, isFinal || isLive));
+  ownerTagsFor(match.home, poolTeams).forEach(t => card.appendChild(t));
+  card.appendChild(buildBracketTeamRow(match.away, isFinal && !match.away.isWinner, isFinal || isLive));
+  ownerTagsFor(match.away, poolTeams).forEach(t => card.appendChild(t));
 
-  // Click → detail modal
   card.style.cursor = "pointer";
-  card.addEventListener("click", () => showMatchModal(event, poolTeams));
+  card.addEventListener("click", () => showMatchModal(match, poolTeams));
 
   slot.appendChild(card);
   return slot;
 }
 
-function buildBracketTeamRow(competitor, dimmed, showScore) {
+function buildBracketTeamRow(slot, dimmed, showScore) {
   const row = document.createElement("div");
   row.className = "bracket-team-row";
   if (dimmed) row.style.opacity = "0.35";
 
-  // Flag
-  const logoUrl = competitor?.team?.logo || competitor?.team?.logos?.[0]?.href;
+  const logoUrl = slot.competitor?.team?.logo || slot.competitor?.team?.logos?.[0]?.href;
   if (logoUrl) {
     const flag = document.createElement("img");
     flag.className = "bracket-flag";
-    flag.src = logoUrl;
-    flag.alt = "";
-    flag.loading = "lazy";
+    flag.src = logoUrl; flag.alt = ""; flag.loading = "lazy";
     row.appendChild(flag);
   } else {
     const ph = document.createElement("span");
@@ -344,16 +283,26 @@ function buildBracketTeamRow(competitor, dimmed, showScore) {
 
   const name = document.createElement("span");
   name.className = "bracket-team-name";
-  name.textContent = competitor?.team?.abbreviation || competitor?.team?.displayName || "TBC";
+  // Real team → abbreviation if available; placeholder → its label text.
+  name.textContent = slot.competitor?.team?.abbreviation || slot.label;
+  if (!slot.resolved) name.style.opacity = "0.6";
   row.appendChild(name);
 
   if (showScore) {
     const score = document.createElement("span");
     score.className = "bracket-score";
-    score.textContent = competitor?.score ?? "–";
+    score.textContent = slot.score ?? "–";
     row.appendChild(score);
   }
   return row;
+}
+
+// Owner tags live in the render layer (needs Firebase-loaded poolTeams + teamMatches).
+function ownerTagsFor(slot, poolTeams) {
+  if (!slot.teamName) return [];
+  return poolTeams
+    .filter(pt => teamMatches(slot.teamName, pt.team.name))
+    .map(pt => buildBracketOwnerTag(pt));
 }
 
 function buildBracketOwnerTag(pt) {
