@@ -1,6 +1,6 @@
 // js/elimination.js
 // Auto-detect eliminated teams from ESPN knockout match results + group stage exits
-import { ESPN_BASE, FINAL_STATES } from "./matches.js";
+import { ESPN_BASE, isFinalEvent } from "./matches.js";
 import { normalizeTeamName, DEFAULT_TIERS } from "./config.js";
 
 const KNOCKOUT_SLUGS = [
@@ -92,7 +92,7 @@ export async function fetchKnockoutEliminations() {
 
     // ── Step 3: Mark knockout losers ──────────────────────────────────────
     for (const { ev, headline, slug } of knockoutEvents) {
-      if (!FINAL_STATES.has(ev.status?.type?.name || "")) continue;
+      if (!isFinalEvent(ev)) continue;
 
       // Third-place match: both teams already eliminated from SF
       if (/third.place|3rd.place/i.test(headline) || /third.place|3rd.place/i.test(slug)) continue;

@@ -124,10 +124,47 @@ test('buildModel shows real teams for LIVE matches, not placeholders', () => {
   const live = JSON.parse(JSON.stringify(espnEvents));
   const m74ev = live.find(e => (e.name || '').includes('Paraguay') && (e.name || '').includes('Germany'));
   assert.ok(m74ev, 'fixture should contain the Germany-Paraguay match');
-  m74ev.status.type.name = 'STATUS_IN_PROGRESS';
+  m74ev.status.type = { name: 'STATUS_FIRST_HALF', state: 'in', completed: false };
 
   const m74 = buildModel(skeleton, live).byNumber.get(74);
-  assert.equal(m74.status, 'STATUS_IN_PROGRESS');
+  assert.equal(m74.live, true, 'state:"in" must mark the match live');
+  assert.equal(m74.completed, false);
   assert.deepEqual([m74.home.teamName, m74.away.teamName].sort(), ['Germany', 'Paraguay']);
   assert.ok(m74.home.resolved && m74.away.resolved, 'live match must show real resolved teams');
+});
+
+test('AET finishes resolve — regression for the STATUS_FINAL_AET gap', () => {
+  // M82 (Belgium beat Senegal) and M86 (Argentina beat Cape Verde) both ended
+  // after extra time (status name STATUS_FINAL_AET). An old status-name
+  // allowlist omitted that name, so their losers never advanced/eliminated.
+  const bound = bindEvents(indexSkeleton(skeleton), espnEvents);
+  assert.equal(bound.get(82)?.status?.type?.name, 'STATUS_FINAL_AET');
+  assert.equal(bound.get(86)?.status?.type?.name, 'STATUS_FINAL_AET');
+
+  const o82 = outcome(82, bound);
+  assert.deepEqual([o82.winner, o82.loser], ['Belgium', 'Senegal']);
+  const o86 = outcome(86, bound);
+  assert.deepEqual([o86.winner, o86.loser], ['Argentina', 'Cape Verde']);
+
+  const model = buildModel(skeleton, espnEvents);
+  const m82 = model.byNumber.get(82);
+  assert.equal(m82.completed, true, 'AET match must read as finished');
+  const winner82 = [m82.home, m82.away].filter(s => s.isWinner).map(s => s.teamName);
+  assert.deepEqual(winner82, ['Belgium']);
+});
+
+test('any completed:true finish resolves, even an unseen status name (future-proof)', () => {
+  // The whole point of keying off type.completed: a status name we have never
+  // seen must still count as finished. Rename M74 to a fictional status.
+  const future = JSON.parse(JSON.stringify(espnEvents));
+  const m74ev = future.find(e => (e.name || '').includes('Paraguay') && (e.name || '').includes('Germany'));
+  m74ev.status.type = { name: 'STATUS_SOME_NEW_FINISH', state: 'post', completed: true };
+
+  const o = outcome(74, bindEvents(indexSkeleton(skeleton), future));
+  assert.equal(o.winner, 'Paraguay');
+  assert.equal(o.loser, 'Germany');
+
+  const m74 = buildModel(skeleton, future).byNumber.get(74);
+  assert.equal(m74.completed, true);
+  assert.equal(m74.live, false);
 });

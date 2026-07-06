@@ -5,8 +5,14 @@ import { teamMatches } from "./config.js";
 
 export const ESPN_BASE    = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard";
 export const ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary";
-export const LIVE_STATES  = new Set(["STATUS_IN_PROGRESS", "STATUS_HALFTIME", "STATUS_END_PERIOD"]);
-export const FINAL_STATES = new Set(["STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_FT_EXTRA_TIME", "STATUS_PENALTIES", "STATUS_FINAL_PEN"]);
+// Match state comes straight from ESPN's own status flags, never a hardcoded
+// list of status-name strings. `type.completed` is true for EVERY finish —
+// full-time, after extra time (STATUS_FINAL_AET), penalties, walkover — and
+// `type.state === "in"` covers every in-progress phase (regular, extra time,
+// shootout). An allowlist of names silently mis-reads any variant it omits
+// (that's how AET losers stayed "still in"); these flags never do.
+export const isFinalEvent = ev => ev?.status?.type?.completed === true;
+export const isLiveEvent  = ev => ev?.status?.type?.state === "in";
 let pollInterval = null;
 
 export async function renderMatches(container) {
@@ -64,26 +70,22 @@ function renderMatchCards(container, events, poolTeams) {
   const upcoming  = [];
 
   events.forEach(ev => {
-    const s      = ev.status?.type?.name || "STATUS_SCHEDULED";
     const evDate = new Date(ev.date || "");
     const isToday = evDate.toDateString() === todayStr;
 
     if (isToday) {
       today.push(ev);
-    } else if (FINAL_STATES.has(s)) {
+    } else if (isFinalEvent(ev)) {
       results.push(ev);
     } else {
       upcoming.push(ev);
     }
   });
 
-  // Sort: today by time, results newest-first, upcoming soonest-first
+  // Sort: today live→final→upcoming, results newest-first, upcoming soonest-first
   today.sort((a, b) => {
-    const sa = a.status?.type?.name || "";
-    const sb = b.status?.type?.name || "";
-    const la = LIVE_STATES.has(sa) ? 0 : FINAL_STATES.has(sa) ? 1 : 2;
-    const lb = LIVE_STATES.has(sb) ? 0 : FINAL_STATES.has(sb) ? 1 : 2;
-    return la - lb || new Date(a.date) - new Date(b.date);
+    const rank = ev => isLiveEvent(ev) ? 0 : isFinalEvent(ev) ? 1 : 2;
+    return rank(a) - rank(b) || new Date(a.date) - new Date(b.date);
   });
   results.sort((a, b)  => new Date(b.date) - new Date(a.date));
   upcoming.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -95,7 +97,7 @@ function renderMatchCards(container, events, poolTeams) {
 
     const todayLabel = document.createElement("div");
     todayLabel.className = "today-matches-label";
-    const hasLive = today.some(ev => LIVE_STATES.has(ev.status?.type?.name || ""));
+    const hasLive = today.some(isLiveEvent);
     if (hasLive) {
       const dot = document.createElement("span");
       dot.className = "live-dot";
@@ -105,8 +107,7 @@ function renderMatchCards(container, events, poolTeams) {
     todayBox.appendChild(todayLabel);
 
     today.forEach(ev => {
-      const s = ev.status?.type?.name || "STATUS_SCHEDULED";
-      todayBox.appendChild(buildCard(ev, poolTeams, LIVE_STATES.has(s), FINAL_STATES.has(s)));
+      todayBox.appendChild(buildCard(ev, poolTeams, isLiveEvent(ev), isFinalEvent(ev)));
     });
     container.appendChild(todayBox);
   }
@@ -142,8 +143,7 @@ function renderMatchCards(container, events, poolTeams) {
         return;
       }
       items.forEach(ev => {
-        const s = ev.status?.type?.name || "STATUS_SCHEDULED";
-        listEl.appendChild(buildCard(ev, poolTeams, LIVE_STATES.has(s), FINAL_STATES.has(s)));
+        listEl.appendChild(buildCard(ev, poolTeams, isLiveEvent(ev), isFinalEvent(ev)));
       });
     }
 

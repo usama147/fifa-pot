@@ -3,7 +3,7 @@ import { db, teamMatches } from "./config.js";
 import {
   doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import { ESPN_BASE, FINAL_STATES } from "./matches.js";
+import { ESPN_BASE, isFinalEvent } from "./matches.js";
 import { fetchKnockoutEliminations, mergeEliminations, isTeamEliminated } from "./elimination.js";
 
 export async function renderLeaderboard(container) {
@@ -46,9 +46,7 @@ export async function renderLeaderboard(container) {
     const fmt   = d => d.toISOString().slice(0, 10).replace(/-/g, "");
     const res   = await fetch(`${ESPN_BASE}?dates=${fmt(start)}-${fmt(now)}`);
     const data  = await res.json();
-    events = (data.events || []).filter(ev =>
-      FINAL_STATES.has(ev.status?.type?.name || "")
-    );
+    events = (data.events || []).filter(isFinalEvent);
   } catch { /* proceed with zero goals */ }
 
   // Score each participant: sum goals scored by each of their 3 teams

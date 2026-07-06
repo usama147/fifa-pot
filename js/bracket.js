@@ -1,6 +1,6 @@
 // js/bracket.js — renders the knockout bracket from the fixed skeleton model.
 import { teamMatches } from "./config.js";
-import { LIVE_STATES, FINAL_STATES, buildCard } from "./matches.js";
+import { buildCard } from "./matches.js";
 import { buildModel, loadSkeleton } from "./bracket-model.js";
 
 const ROUND_ORDER  = ["r32", "r16", "qf", "sf", "third", "final"];
@@ -67,7 +67,7 @@ async function fetchAndRender(container, poolTeams, skeleton) {
 function renderViews(container, model, poolTeams) {
   container.innerHTML = "";
   const anyPlayed = [...model.byNumber.values()].some(
-    m => LIVE_STATES.has(m.status) || FINAL_STATES.has(m.status)
+    m => m.live || m.completed
   );
 
   // Mobile list
@@ -131,7 +131,7 @@ function renderList(container, model, poolTeams) {
       .filter(Boolean);
     if (!matches.length) return;
 
-    const isLiveRound = matches.some(m => LIVE_STATES.has(m.status));
+    const isLiveRound = matches.some(m => m.live);
     const hdr = document.createElement("div");
     hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin:18px 0 10px;";
     if (isLiveRound) {
@@ -151,8 +151,7 @@ function renderList(container, model, poolTeams) {
     // Bound matches render the rich ESPN card; unplayed slots use the bracket slot.
     matches.forEach(m => {
       if (m.event) {
-        const s = m.status;
-        container.appendChild(buildCard(m.event, poolTeams, LIVE_STATES.has(s), FINAL_STATES.has(s)));
+        container.appendChild(buildCard(m.event, poolTeams, m.live, m.completed));
       } else {
         container.appendChild(buildBracketSlot(m, poolTeams));
       }
@@ -238,8 +237,8 @@ function buildBracketColumn(key, matches, poolTeams) {
 
 // ── Slot builder ──────────────────────────────────────────────────────────────
 function buildBracketSlot(match, poolTeams) {
-  const isLive  = LIVE_STATES.has(match.status);
-  const isFinal = FINAL_STATES.has(match.status);
+  const isLive  = match.live;
+  const isFinal = match.completed;
 
   const slot = document.createElement("div");
   slot.className = "bracket-slot";
@@ -399,8 +398,8 @@ function drawColConnectors(col, side) {
 function showMatchModal(match, poolTeams) {
   document.getElementById("bracket-modal")?.remove();
 
-  const isLive  = LIVE_STATES.has(match.status);
-  const isFinal = FINAL_STATES.has(match.status);
+  const isLive  = match.live;
+  const isFinal = match.completed;
   const venue   = match.event?.competitions?.[0]?.venue;
 
   const overlay = document.createElement("div");

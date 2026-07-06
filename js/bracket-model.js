@@ -2,11 +2,11 @@
 // Pure bracket model: skeleton indexing, ESPN join, winner/feed resolution.
 // MUST stay DOM-free and Firebase-free so it runs under `node --test`.
 
-// Duplicated locally (do NOT import matches.js — it pulls Firebase via config.js).
-const FINAL_STATES = new Set([
-  "STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_FT_EXTRA_TIME",
-  "STATUS_PENALTIES", "STATUS_FINAL_PEN",
-]);
+// A match is finished when ESPN's own `type.completed` flag is true — this
+// covers full-time, after extra time, penalties, and any future finish variant
+// without a status-name list to maintain. (Kept in sync conceptually with
+// isFinalEvent in matches.js; this module stays Firebase-free, so no import.)
+const isFinished = ev => ev?.status?.type?.completed === true;
 
 export const ROUND_KEY = {
   "round-of-32": "r32",
@@ -113,7 +113,7 @@ export function bindEvents(index, espnEvents) {
 
 export function outcome(matchNumber, bound) {
   const ev = bound.get(matchNumber);
-  if (!ev || !FINAL_STATES.has(ev.status?.type?.name || "")) {
+  if (!isFinished(ev)) {
     return { winner: null, loser: null };
   }
   const comps = ev.competitions?.[0]?.competitors || [];
@@ -194,6 +194,8 @@ export function buildModel(skeleton, espnEvents) {
       date: ev?.date || def.date,
       feedsInto: def.feedsInto,
       status: ev?.status?.type?.name || "STATUS_SCHEDULED",
+      completed: ev?.status?.type?.completed === true,
+      live: ev?.status?.type?.state === "in",
       event: ev,
       home: home && isRealTeam(home) ? slotFromCompetitor(home) : slotFromDef(def.homeDef, bound),
       away: away && isRealTeam(away) ? slotFromCompetitor(away) : slotFromDef(def.awayDef, bound),

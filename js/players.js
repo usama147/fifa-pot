@@ -3,7 +3,7 @@ import { db, teamMatches } from "./config.js";
 import {
   doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import { buildCard, ESPN_BASE, FINAL_STATES } from "./matches.js";
+import { buildCard, ESPN_BASE, isFinalEvent } from "./matches.js";
 import { fetchKnockoutEliminations, mergeEliminations, isTeamEliminated } from "./elimination.js";
 
 // ── Particle cleanup registry ─────────────────────────────────────────────────
@@ -374,7 +374,7 @@ async function renderMatchHistory(container, playerTeams) {
 
   // Keep only completed matches involving at least one of this player's teams
   const played = events.filter(ev => {
-    if (!FINAL_STATES.has(ev.status?.type?.name || "")) return false;
+    if (!isFinalEvent(ev)) return false;
     const comps = ev.competitions?.[0]?.competitors || [];
     return comps.some(c => teamNames.some(name => teamMatches(c.team?.displayName || "", name)));
   });
